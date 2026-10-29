@@ -28,27 +28,48 @@ function createRoundedRectShape(width: number, height: number, radius: number): 
 }
 
 const extrudedGeoCache = new Map<string, THREE.ExtrudeGeometry>();
+const contourGeoCache = new Map<string, THREE.ShapeGeometry>();
 
 function getBeveledBrickGeometry(width: number, height: number): THREE.ExtrudeGeometry {
-  const key = `${width.toFixed(2)}_${height.toFixed(2)}`;
+  const key = `crisp_${width.toFixed(2)}_${height.toFixed(2)}`;
   const cached = extrudedGeoCache.get(key);
   if (cached) return cached;
 
-  const bodyW = width - 0.14;
-  const bodyH = height - 0.14;
-  const shape = createRoundedRectShape(bodyW, bodyH, 0.16);
+  const bodyW = Math.max(0.2, width - 0.01);
+  const bodyH = Math.max(0.2, height - 0.01);
+  const cornerR = Math.min(0.05, bodyW * 0.12, bodyH * 0.12);
+  const shape = createRoundedRectShape(bodyW, bodyH, cornerR);
 
   const geo = new THREE.ExtrudeGeometry(shape, {
     steps: 1,
-    depth: 0.42,
-    bevelEnabled: true,
-    bevelThickness: 0.09,
-    bevelSize: 0.07,
-    bevelOffset: 0,
-    bevelSegments: 3,
+    depth: 0.28,
+    bevelEnabled: false,
   });
   geo.center();
   extrudedGeoCache.set(key, geo);
+  return geo;
+}
+
+/**
+ * Builds a crisp rectangular contour highlight that hugs the brick's exact silhouette
+ * (replaces the old circular ring that looked out of place on rectangular bricks).
+ */
+function getBrickContourGeometry(width: number, height: number): THREE.ShapeGeometry {
+  const key = `contour_${width.toFixed(2)}_${height.toFixed(2)}`;
+  const cached = contourGeoCache.get(key);
+  if (cached) return cached;
+
+  const outerW = width + 0.06;
+  const outerH = height + 0.06;
+  const innerW = Math.max(0.1, width - 0.04);
+  const innerH = Math.max(0.1, height - 0.04);
+
+  const outerShape = createRoundedRectShape(outerW, outerH, 0.06);
+  const innerHole = createRoundedRectShape(innerW, innerH, 0.04);
+  outerShape.holes.push(innerHole);
+
+  const geo = new THREE.ShapeGeometry(outerShape, 12);
+  contourGeoCache.set(key, geo);
   return geo;
 }
 
@@ -72,85 +93,82 @@ export function createCompositeBrickMesh(
   const group = new THREE.Group();
   const pal = BRICK_PALETTE[color];
 
-  // Part 1: Primary Beveled 3D Hull
+  // Part 1: Crisp Solid 3D Mini-Brick Hull (Vibrant emissive color, no gelatinous bevel or clearcoat)
   const bodyGeo = getBeveledBrickGeometry(width, height);
   const bodyMat = new THREE.MeshPhysicalMaterial({
     color: pal.baseHex,
     emissive: pal.emissiveHex,
-    emissiveIntensity: type === 'lightning' ? 0.85 : 0.35,
-    roughness: type === 'metal' ? 0.25 : 0.16,
-    metalness: type === 'metal' ? 0.85 : 0.12,
-    clearcoat: isSoftwareGl ? 0 : 1.0,
-    clearcoatRoughness: 0.1,
+    emissiveIntensity: type === 'lightning' ? 0.85 : 0.55,
+    roughness: type === 'metal' ? 0.25 : 0.3,
+    metalness: type === 'metal' ? 0.85 : 0.08,
+    clearcoat: 0,
   });
   const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
   bodyMesh.castShadow = !isSoftwareGl;
   bodyMesh.receiveShadow = !isSoftwareGl;
   group.add(bodyMesh);
 
-  // Part 2: Raised Bezel Rim
-  const rimGeo = new THREE.BoxGeometry(width * 0.94, height * 0.92, 0.28);
+  // Part 2: Flush Inner Core (Never protrudes outside the brick)
+  const rimGeo = new THREE.BoxGeometry(width * 0.96, height * 0.96, 0.24);
   const rimMat = new THREE.MeshStandardMaterial({
     color: pal.rimHex,
     emissive: pal.baseHex,
-    emissiveIntensity: 0.25,
-    roughness: 0.45,
-    metalness: 0.48,
+    emissiveIntensity: 0.45,
+    roughness: 0.35,
+    metalness: 0.25,
   });
   const rimMesh = new THREE.Mesh(rimGeo, rimMat);
-  rimMesh.position.z = -0.05;
+  rimMesh.position.z = -0.02;
   group.add(rimMesh);
 
-  // Part 3: Front Faceplate Decal
-  const faceGeo = new THREE.PlaneGeometry(width * 0.95, height * 0.95);
+  // Part 3: Crisp Ultra-HD Vector Front Faceplate (toneMapped: false for 100% vivid uncompressed colors)
+  const faceGeo = new THREE.PlaneGeometry(width, height);
   const faceTex = getBrickFaceTexture(type, color, hp, false);
   const faceMat = new THREE.MeshBasicMaterial({
     map: faceTex,
     transparent: true,
+    alphaTest: 0.2,
+    toneMapped: false,
     polygonOffset: true,
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -1,
   });
   const faceMesh = new THREE.Mesh(faceGeo, faceMat);
-  faceMesh.position.z = 0.31;
+  faceMesh.position.z = 0.145;
   group.add(faceMesh);
 
-  // Part 4: Rear Neon Halo Rim Plate
-  const glowGeo = new THREE.PlaneGeometry(width * 1.16, height * 1.18);
+  // Part 4: Disabled outer halo plate (no gelatinous contour around bricks)
+  const glowGeo = new THREE.PlaneGeometry(width, height);
   const glowMat = new THREE.MeshBasicMaterial({
-    color: type === 'lightning' ? 0x00f0ff : pal.rimHex,
+    color: pal.rimHex,
     transparent: true,
-    opacity: type === 'lightning' ? 0.48 : 0.22,
-    blending: THREE.AdditiveBlending,
+    opacity: 0,
     depthWrite: false,
   });
   const glowMesh = new THREE.Mesh(glowGeo, glowMat);
-  glowMesh.position.z = -0.26;
+  glowMesh.position.z = -0.16;
+  glowMesh.visible = false;
   group.add(glowMesh);
 
-  // Part 5: Rival Revenge Halo Ring (Visible when this brick is designated as Revenge Target)
-  const rivalGeo = new THREE.RingGeometry(
-    Math.max(width, height) * 0.52,
-    Math.max(width, height) * 0.66,
-    28
-  );
+  // Part 5: Rectangular Contour Highlight (Surbrillance de contour épousant la brique)
+  const rivalGeo = getBrickContourGeometry(width, height);
   const rivalMat = new THREE.MeshBasicMaterial({
     color: 0xffd700,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.92,
     side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
   const rivalRing = new THREE.Mesh(rivalGeo, rivalMat);
-  rivalRing.position.z = 0.34;
+  rivalRing.position.z = 0.152;
   rivalRing.visible = false;
   group.add(rivalRing);
 
   return { group, bodyMat, rimMat, faceMesh, glowMat, rivalRing };
 }
 
-export function createCompositePaddleMesh(width: number = 3.1): {
+export function createCompositePaddleMesh(width: number = 2.15): {
   group: THREE.Group;
   coreMat: THREE.MeshStandardMaterial;
   sleeveMat: THREE.MeshPhysicalMaterial;
@@ -160,8 +178,8 @@ export function createCompositePaddleMesh(width: number = 3.1): {
   muzzleFlash: THREE.Mesh;
 } {
   const group = new THREE.Group();
-  const radius = 0.34;
-  const bodyLength = width - radius * 2;
+  const radius = 0.22;
+  const bodyLength = Math.max(0.6, width - radius * 2);
 
   // 1. Inner White-Cyan Energy Core
   const coreGeo = new THREE.CylinderGeometry(radius * 0.68, radius * 0.68, bodyLength * 0.92, 24);
@@ -193,7 +211,7 @@ export function createCompositePaddleMesh(width: number = 3.1): {
   group.add(sleeveMesh);
 
   // 3 & 4. Left & Right Metallic Emitter Collars
-  const collarGeo = new THREE.CylinderGeometry(radius * 1.04, radius * 1.04, 0.14, 24);
+  const collarGeo = new THREE.CylinderGeometry(radius * 1.04, radius * 1.04, 0.10, 24);
   collarGeo.rotateZ(Math.PI / 2);
   const collarMat = new THREE.MeshStandardMaterial({
     color: 0xf8fafc,
@@ -224,16 +242,16 @@ export function createCompositePaddleMesh(width: number = 3.1): {
 
   const leftCap = new THREE.Mesh(capGeo, capMat);
   leftCap.scale.set(1.15, 1.0, 1.0);
-  leftCap.position.x = -bodyLength / 2 - 0.06;
+  leftCap.position.x = -bodyLength / 2 - 0.04;
   group.add(leftCap);
 
   const rightCap = new THREE.Mesh(capGeo, capMat);
   rightCap.scale.set(1.15, 1.0, 1.0);
-  rightCap.position.x = bodyLength / 2 + 0.06;
+  rightCap.position.x = bodyLength / 2 + 0.04;
   group.add(rightCap);
 
   // 7. UnderGlow
-  const underGlowGeo = new THREE.PlaneGeometry(width * 1.5, 1.5);
+  const underGlowGeo = new THREE.PlaneGeometry(width * 1.45, 1.05);
   const underGlowMat = new THREE.MeshBasicMaterial({
     map: getRadialGlowTexture(),
     color: 0x00e5ff,
@@ -243,11 +261,11 @@ export function createCompositePaddleMesh(width: number = 3.1): {
     depthWrite: false,
   });
   const underGlow = new THREE.Mesh(underGlowGeo, underGlowMat);
-  underGlow.position.set(0, -0.15, -0.35);
+  underGlow.position.set(0, -0.10, -0.25);
   group.add(underGlow);
 
   // 8. Magnet / Sticky Active Aura
-  const magnetGeo = new THREE.RingGeometry(width * 0.42, width * 0.58, 32, 1, 0, Math.PI);
+  const magnetGeo = new THREE.RingGeometry(width * 0.42, width * 0.56, 32, 1, 0, Math.PI);
   const magnetMat = new THREE.MeshBasicMaterial({
     color: 0x00f0ff,
     transparent: true,
@@ -257,16 +275,16 @@ export function createCompositePaddleMesh(width: number = 3.1): {
     depthWrite: false,
   });
   const magnetAura = new THREE.Mesh(magnetGeo, magnetMat);
-  magnetAura.position.set(0, 0.2, 0.1);
+  magnetAura.position.set(0, 0.14, 0.08);
   group.add(magnetAura);
 
   // 9. Laser Aim Guide Line
-  const aimPoints = [new THREE.Vector3(0, 0.35, 0.1), new THREE.Vector3(0, 4.2, 0.1)];
+  const aimPoints = [new THREE.Vector3(0, 0.25, 0.1), new THREE.Vector3(0, 3.6, 0.1)];
   const aimGeo = new THREE.BufferGeometry().setFromPoints(aimPoints);
   const aimMat = new THREE.LineDashedMaterial({
     color: 0x00f0ff,
-    dashSize: 0.28,
-    gapSize: 0.16,
+    dashSize: 0.22,
+    gapSize: 0.14,
     transparent: true,
     opacity: 0.85,
   });
@@ -275,12 +293,12 @@ export function createCompositePaddleMesh(width: number = 3.1): {
   aimLine.visible = false;
   group.add(aimLine);
 
-  // 10. Twin-Barrel 3D Machine Gun Turret (Deploys out of the paddle and aims toward the cursor!)
+  // 10. Twin-Barrel 3D Machine Gun Turret (Proportional to sleek paddle)
   const gunTurret = new THREE.Group();
-  gunTurret.position.set(0, 0.28, 0.18);
+  gunTurret.position.set(0, 0.20, 0.14);
   gunTurret.visible = false;
 
-  const baseDomeGeo = new THREE.SphereGeometry(0.28, 16, 16);
+  const baseDomeGeo = new THREE.SphereGeometry(0.20, 16, 16);
   const baseDomeMat = new THREE.MeshStandardMaterial({
     color: 0x1e293b,
     emissive: 0xf43f5e,
@@ -291,7 +309,7 @@ export function createCompositePaddleMesh(width: number = 3.1): {
   const baseDome = new THREE.Mesh(baseDomeGeo, baseDomeMat);
   gunTurret.add(baseDome);
 
-  const barrelGeo = new THREE.CylinderGeometry(0.065, 0.08, 0.68, 12);
+  const barrelGeo = new THREE.CylinderGeometry(0.048, 0.06, 0.50, 12);
   const barrelMat = new THREE.MeshStandardMaterial({
     color: 0xf8fafc,
     emissive: 0xff1668,
@@ -300,14 +318,14 @@ export function createCompositePaddleMesh(width: number = 3.1): {
     metalness: 0.9,
   });
   const leftBarrel = new THREE.Mesh(barrelGeo, barrelMat);
-  leftBarrel.position.set(-0.12, 0.38, 0);
+  leftBarrel.position.set(-0.09, 0.28, 0);
   gunTurret.add(leftBarrel);
 
   const rightBarrel = new THREE.Mesh(barrelGeo, barrelMat);
-  rightBarrel.position.set(0.12, 0.38, 0);
+  rightBarrel.position.set(0.09, 0.28, 0);
   gunTurret.add(rightBarrel);
 
-  const muzzleGeo = new THREE.PlaneGeometry(0.85, 0.85);
+  const muzzleGeo = new THREE.PlaneGeometry(0.65, 0.65);
   const muzzleMat = new THREE.MeshBasicMaterial({
     map: getRadialGlowTexture(),
     color: 0xffb800,
@@ -317,7 +335,7 @@ export function createCompositePaddleMesh(width: number = 3.1): {
     depthWrite: false,
   });
   const muzzleFlash = new THREE.Mesh(muzzleGeo, muzzleMat);
-  muzzleFlash.position.set(0, 0.78, 0.05);
+  muzzleFlash.position.set(0, 0.58, 0.05);
   gunTurret.add(muzzleFlash);
 
   group.add(gunTurret);
@@ -327,14 +345,14 @@ export function createCompositePaddleMesh(width: number = 3.1): {
 
 export function createPlasmaBulletMesh(): THREE.Group {
   const group = new THREE.Group();
-  const coreGeo = new THREE.CapsuleGeometry(0.08, 0.26, 8, 12);
+  const coreGeo = new THREE.CapsuleGeometry(0.06, 0.20, 8, 12);
   const coreMat = new THREE.MeshBasicMaterial({
     color: 0xfff078,
   });
   const core = new THREE.Mesh(coreGeo, coreMat);
   group.add(core);
 
-  const haloGeo = new THREE.PlaneGeometry(0.65, 0.65);
+  const haloGeo = new THREE.PlaneGeometry(0.48, 0.48);
   const haloMat = new THREE.MeshBasicMaterial({
     map: getRadialGlowTexture(),
     color: 0xff1668,
@@ -353,7 +371,7 @@ export function createSafetyWallMesh(): {
   beamMat: THREE.MeshBasicMaterial;
 } {
   const group = new THREE.Group();
-  const beamGeo = new THREE.BoxGeometry(24, 0.16, 0.22);
+  const beamGeo = new THREE.BoxGeometry(24, 0.14, 0.20);
   const beamMat = new THREE.MeshBasicMaterial({
     color: 0x00f0ff,
     transparent: true,
@@ -363,7 +381,7 @@ export function createSafetyWallMesh(): {
   const beam = new THREE.Mesh(beamGeo, beamMat);
   group.add(beam);
 
-  const glowGeo = new THREE.PlaneGeometry(24, 0.9);
+  const glowGeo = new THREE.PlaneGeometry(24, 0.75);
   const glowMat = new THREE.MeshBasicMaterial({
     color: 0x06b6d4,
     transparent: true,
@@ -379,7 +397,8 @@ export function createSafetyWallMesh(): {
   return { group, beamMat };
 }
 
-export const TRAIL_SEGMENTS = 18;
+export const TRAIL_SEGMENTS = 68;
+export const PADDLE_TRAIL_SEGMENTS = 36;
 
 export interface OrbVisualBundle {
   orbGroup: THREE.Group;
@@ -388,9 +407,106 @@ export interface OrbVisualBundle {
   history: THREE.Vector3[];
 }
 
+export interface PaddleTrailBundle {
+  trailMesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  history: THREE.Vector3[];
+}
+
+export function createPaddleTrailMesh(): PaddleTrailBundle {
+  const vertexCount = PADDLE_TRAIL_SEGMENTS * 3;
+  const positions = new Float32Array(vertexCount * 3);
+  const colors = new Float32Array(vertexCount * 3);
+  const indices: number[] = [];
+
+  for (let i = 0; i < PADDLE_TRAIL_SEGMENTS - 1; i++) {
+    const rowA = i * 3;
+    const rowB = (i + 1) * 3;
+    indices.push(rowA, rowA + 1, rowB, rowA + 1, rowB + 1, rowB);
+    indices.push(rowA + 1, rowA + 2, rowB + 1, rowA + 2, rowB + 2, rowB + 1);
+  }
+
+  const cCyan = new THREE.Color(0x00f0ff);
+  const cPurple = new THREE.Color(0xa855f7);
+  const cPink = new THREE.Color(0xff1688);
+  const cGold = new THREE.Color(0xffd700);
+  const tmpColor = new THREE.Color();
+  const spineColor = new THREE.Color();
+
+  for (let i = 0; i < PADDLE_TRAIL_SEGMENTS; i++) {
+    const t = i / (PADDLE_TRAIL_SEGMENTS - 1);
+    if (t < 0.33) {
+      tmpColor.lerpColors(cCyan, cPurple, t / 0.33);
+    } else if (t < 0.66) {
+      tmpColor.lerpColors(cPurple, cPink, (t - 0.33) / 0.33);
+    } else {
+      tmpColor.lerpColors(cPink, cGold, (t - 0.66) / 0.34);
+    }
+    spineColor.copy(tmpColor).lerp(new THREE.Color(0xffffff), 0.35 * (1 - t));
+
+    const longitudinalFade = Math.pow(1 - t, 1.35);
+    const edgeFactor = longitudinalFade * 0.22;
+    const centerFactor = longitudinalFade * 0.85;
+
+    const baseIdx = i * 3;
+    colors[(baseIdx + 0) * 3 + 0] = tmpColor.r * edgeFactor;
+    colors[(baseIdx + 0) * 3 + 1] = tmpColor.g * edgeFactor;
+    colors[(baseIdx + 0) * 3 + 2] = tmpColor.b * edgeFactor;
+
+    colors[(baseIdx + 1) * 3 + 0] = spineColor.r * centerFactor;
+    colors[(baseIdx + 1) * 3 + 1] = spineColor.g * centerFactor;
+    colors[(baseIdx + 1) * 3 + 2] = spineColor.b * centerFactor;
+
+    colors[(baseIdx + 2) * 3 + 0] = tmpColor.r * edgeFactor;
+    colors[(baseIdx + 2) * 3 + 1] = tmpColor.g * edgeFactor;
+    colors[(baseIdx + 2) * 3 + 2] = tmpColor.b * edgeFactor;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setIndex(indices);
+
+  const mat = new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.88,
+    toneMapped: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+
+  const trailMesh = new THREE.Mesh(geo, mat);
+  trailMesh.frustumCulled = false;
+
+  const history: THREE.Vector3[] = [];
+  for (let i = 0; i < PADDLE_TRAIL_SEGMENTS; i++) {
+    history.push(new THREE.Vector3(0, -5.55, -0.05));
+  }
+
+  return { trailMesh, history };
+}
+
+export function updatePaddleTrailGeometry(bundle: PaddleTrailBundle) {
+  const posAttr = bundle.trailMesh.geometry.getAttribute('position') as THREE.BufferAttribute;
+  const hist = bundle.history;
+
+  for (let i = 0; i < PADDLE_TRAIL_SEGMENTS; i++) {
+    const curr = hist[i];
+    const t = i / (PADDLE_TRAIL_SEGMENTS - 1);
+    const halfHeight = 0.21 * Math.pow(1 - t, 0.75);
+
+    const baseIdx = i * 3;
+    posAttr.setXYZ(baseIdx + 0, curr.x, curr.y + halfHeight, -0.05);
+    posAttr.setXYZ(baseIdx + 1, curr.x, curr.y, -0.05);
+    posAttr.setXYZ(baseIdx + 2, curr.x, curr.y - halfHeight, -0.05);
+  }
+  posAttr.needsUpdate = true;
+}
+
 export function createCompositeOrbAndTrail(): OrbVisualBundle {
   const orbGroup = new THREE.Group();
-  const radius = 0.34;
+  const radius = 0.19;
 
   const innerGeo = new THREE.SphereGeometry(radius * 0.76, 20, 20);
   const innerMat = new THREE.MeshBasicMaterial({
@@ -407,72 +523,100 @@ export function createCompositeOrbAndTrail(): OrbVisualBundle {
     roughness: 0.1,
     metalness: 0.2,
     transparent: true,
-    opacity: 0.82,
+    opacity: 0.88,
   });
   const shellMesh = new THREE.Mesh(shellGeo, shellMat);
   orbGroup.add(shellMesh);
 
-  const ringGeo = new THREE.TorusGeometry(radius * 1.12, 0.04, 10, 24);
+  const ringGeo = new THREE.TorusGeometry(radius * 1.08, 0.022, 10, 24);
   const ringMat = new THREE.MeshBasicMaterial({
     color: 0xff40a0,
     transparent: true,
-    opacity: 0.75,
+    opacity: 0.65,
     blending: THREE.AdditiveBlending,
   });
   const ringMesh = new THREE.Mesh(ringGeo, ringMat);
   ringMesh.rotation.x = Math.PI / 3;
   orbGroup.add(ringMesh);
 
-  const haloGeo = new THREE.PlaneGeometry(radius * 4.4, radius * 4.4);
+  const haloGeo = new THREE.PlaneGeometry(radius * 3.4, radius * 3.4);
   const haloMat = new THREE.MeshBasicMaterial({
     map: getRadialGlowTexture(),
     color: 0x38bdf8,
     transparent: true,
-    opacity: 0.88,
+    opacity: 0.78,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
   const haloMesh = new THREE.Mesh(haloGeo, haloMat);
-  haloMesh.position.z = -0.05;
+  haloMesh.position.z = -0.01;
   orbGroup.add(haloMesh);
 
-  const vertexCount = TRAIL_SEGMENTS * 2;
+  // 3 vertices per segment: [Left Feathered Edge, Bright Center Spine, Right Feathered Edge]
+  // 68 segments = 4x longer colorful prismatic comet wake locked to the ball's exact center!
+  const vertexCount = TRAIL_SEGMENTS * 3;
   const positions = new Float32Array(vertexCount * 3);
   const colors = new Float32Array(vertexCount * 3);
   const indices: number[] = [];
 
   for (let i = 0; i < TRAIL_SEGMENTS - 1; i++) {
-    const a = i * 2;
-    const b = a + 1;
-    const c = a + 2;
-    const d = a + 3;
-    indices.push(a, b, c, b, d, c);
+    const rowA = i * 3;
+    const rowB = (i + 1) * 3;
+    // Left strip (Left -> Center)
+    indices.push(rowA, rowA + 1, rowB, rowA + 1, rowB + 1, rowB);
+    // Right strip (Center -> Right)
+    indices.push(rowA + 1, rowA + 2, rowB + 1, rowA + 2, rowB + 2, rowB + 1);
   }
 
-  const cHead = new THREE.Color(0x80ffff);
-  const cMid = new THREE.Color(0x0088ff);
-  const cTail = new THREE.Color(0xff1688);
+  const cSpineHead = new THREE.Color(0xffffff);
+  const cCyan = new THREE.Color(0x00f0ff);
+  const cBlue = new THREE.Color(0x0077ff);
+  const cPurple = new THREE.Color(0xa855f7);
+  const cPink = new THREE.Color(0xff1688);
+  const cGold = new THREE.Color(0xffd700);
   const tmpColor = new THREE.Color();
+  const spineColor = new THREE.Color();
 
   for (let i = 0; i < TRAIL_SEGMENTS; i++) {
     const t = i / (TRAIL_SEGMENTS - 1);
-    if (t < 0.45) {
-      tmpColor.lerpColors(cHead, cMid, t / 0.45);
+    if (t < 0.22) {
+      const localT = t / 0.22;
+      tmpColor.lerpColors(cCyan, cBlue, localT);
+      spineColor.lerpColors(cSpineHead, cCyan, localT);
+    } else if (t < 0.48) {
+      const localT = (t - 0.22) / 0.26;
+      tmpColor.lerpColors(cBlue, cPurple, localT);
+      spineColor.lerpColors(cCyan, cPurple, localT);
+    } else if (t < 0.74) {
+      const localT = (t - 0.48) / 0.26;
+      tmpColor.lerpColors(cPurple, cPink, localT);
+      spineColor.lerpColors(cPurple, cPink, localT);
     } else {
-      tmpColor.lerpColors(cMid, cTail, (t - 0.45) / 0.55);
+      const localT = (t - 0.74) / 0.26;
+      tmpColor.lerpColors(cPink, cGold, localT);
+      spineColor.lerpColors(cPink, cGold, localT);
     }
-    const fade = Math.pow(1 - t, 1.35);
-    const r = tmpColor.r * fade;
-    const g = tmpColor.g * fade;
-    const b = tmpColor.b * fade;
 
-    colors[(i * 2) * 3] = r;
-    colors[(i * 2) * 3 + 1] = g;
-    colors[(i * 2) * 3 + 2] = b;
+    const longitudinalFade = Math.pow(1 - t, 1.18);
+    // Lateral edges fade softly so there is never a harsh rectangular step outside the ball
+    const edgeFactor = longitudinalFade * 0.24;
+    const centerFactor = longitudinalFade * 0.98;
 
-    colors[(i * 2 + 1) * 3] = r;
-    colors[(i * 2 + 1) * 3 + 1] = g;
-    colors[(i * 2 + 1) * 3 + 2] = b;
+    const baseIdx = i * 3;
+    // Left edge vertex
+    colors[(baseIdx + 0) * 3 + 0] = tmpColor.r * edgeFactor;
+    colors[(baseIdx + 0) * 3 + 1] = tmpColor.g * edgeFactor;
+    colors[(baseIdx + 0) * 3 + 2] = tmpColor.b * edgeFactor;
+
+    // Exact center spine vertex (brightest along the ball's exact center line)
+    colors[(baseIdx + 1) * 3 + 0] = spineColor.r * centerFactor;
+    colors[(baseIdx + 1) * 3 + 1] = spineColor.g * centerFactor;
+    colors[(baseIdx + 1) * 3 + 2] = spineColor.b * centerFactor;
+
+    // Right edge vertex
+    colors[(baseIdx + 2) * 3 + 0] = tmpColor.r * edgeFactor;
+    colors[(baseIdx + 2) * 3 + 1] = tmpColor.g * edgeFactor;
+    colors[(baseIdx + 2) * 3 + 2] = tmpColor.b * edgeFactor;
   }
 
   const trailGeo = new THREE.BufferGeometry();
@@ -483,7 +627,8 @@ export function createCompositeOrbAndTrail(): OrbVisualBundle {
   const trailMat = new THREE.MeshBasicMaterial({
     vertexColors: true,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.96,
+    toneMapped: false,
     side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
@@ -494,7 +639,7 @@ export function createCompositeOrbAndTrail(): OrbVisualBundle {
 
   const history: THREE.Vector3[] = [];
   for (let i = 0; i < TRAIL_SEGMENTS; i++) {
-    history.push(new THREE.Vector3(0, -4.5, 0));
+    history.push(new THREE.Vector3(0, -4.5, 0.148));
   }
 
   return { orbGroup, shellMat, trailMesh, history };
@@ -512,8 +657,13 @@ export function updateOrbTrailGeometry(bundle: OrbVisualBundle) {
     const next = hist[Math.min(i + 1, TRAIL_SEGMENTS - 1)];
     const prev = hist[Math.max(i - 1, 0)];
 
-    _dir.subVectors(prev, next);
-    if (_dir.lengthSq() < 0.00001) {
+    if (i === 0) {
+      _dir.subVectors(curr, next);
+    } else {
+      _dir.subVectors(prev, next);
+    }
+
+    if (_dir.lengthSq() < 0.000001) {
       _dir.set(0, 1, 0);
     } else {
       _dir.normalize();
@@ -521,23 +671,28 @@ export function updateOrbTrailGeometry(bundle: OrbVisualBundle) {
     _perp.set(-_dir.y, _dir.x, 0);
 
     const t = i / (TRAIL_SEGMENTS - 1);
-    const halfWidth = 0.32 * Math.pow(1 - t, 0.75);
+    // Start strictly inside the ball radius (0.13 < 0.19) at i=0 so the head is 100% enclosed inside the sphere,
+    // then taper smoothly along the 4x longer comet tail!
+    const headEnvelope = i === 0 ? 0.72 : 1.0;
+    const halfWidth = 0.165 * headEnvelope * Math.pow(1 - t, 0.78);
 
     const lx = curr.x + _perp.x * halfWidth;
     const ly = curr.y + _perp.y * halfWidth;
     const rx = curr.x - _perp.x * halfWidth;
     const ry = curr.y - _perp.y * halfWidth;
 
-    posAttr.setXYZ(i * 2, lx, ly, -0.04);
-    posAttr.setXYZ(i * 2 + 1, rx, ry, -0.04);
+    const baseIdx = i * 3;
+    // Exact same Z plane (0.148) as the ball (0.150) so perspective projection never shifts the trail off-center!
+    posAttr.setXYZ(baseIdx + 0, lx, ly, 0.148);
+    posAttr.setXYZ(baseIdx + 1, curr.x, curr.y, 0.148);
+    posAttr.setXYZ(baseIdx + 2, rx, ry, 0.148);
   }
 
   posAttr.needsUpdate = true;
 }
 
 /**
- * Builds a 4-part 3D Mystery Power-up Capsule
- * dropped with strict rarity when the player works hard to break bricks.
+ * Builds a 4-part 3D Mystery Power-up Capsule (scaled for mini-brick arena)
  */
 export interface CapsuleMeshBundle {
   group: THREE.Group;
@@ -550,7 +705,7 @@ export function createCompositeCapsuleMesh(): CapsuleMeshBundle {
   const group = new THREE.Group();
 
   // 1. 3D Pill Hull
-  const bodyGeo = new THREE.CapsuleGeometry(0.28, 0.56, 12, 20);
+  const bodyGeo = new THREE.CapsuleGeometry(0.20, 0.40, 12, 20);
   bodyGeo.rotateZ(Math.PI / 2);
   const bodyMat = new THREE.MeshPhysicalMaterial({
     color: 0x0088ff,
@@ -564,7 +719,7 @@ export function createCompositeCapsuleMesh(): CapsuleMeshBundle {
   group.add(bodyMesh);
 
   // 2. Metallic End Rings
-  const ringGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.08, 20);
+  const ringGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.06, 20);
   ringGeo.rotateZ(Math.PI / 2);
   const ringMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -572,25 +727,25 @@ export function createCompositeCapsuleMesh(): CapsuleMeshBundle {
     metalness: 0.85,
   });
   const leftRing = new THREE.Mesh(ringGeo, ringMat);
-  leftRing.position.x = -0.28;
+  leftRing.position.x = -0.20;
   group.add(leftRing);
 
   const rightRing = new THREE.Mesh(ringGeo, ringMat);
-  rightRing.position.x = 0.28;
+  rightRing.position.x = 0.20;
   group.add(rightRing);
 
   // 3. Front Label Badge Plane
-  const badgeGeo = new THREE.PlaneGeometry(1.18, 0.58);
+  const badgeGeo = new THREE.PlaneGeometry(0.86, 0.42);
   const badgeMat = new THREE.MeshBasicMaterial({
     map: getCapsuleBadgeTexture('multiball_3'),
     transparent: true,
   });
   const badgeMesh = new THREE.Mesh(badgeGeo, badgeMat);
-  badgeMesh.position.z = 0.31;
+  badgeMesh.position.z = 0.22;
   group.add(badgeMesh);
 
   // 4. Glow Halo
-  const haloGeo = new THREE.PlaneGeometry(1.8, 1.3);
+  const haloGeo = new THREE.PlaneGeometry(1.3, 0.95);
   const haloMat = new THREE.MeshBasicMaterial({
     map: getRadialGlowTexture(),
     color: 0x00f0ff,
@@ -600,7 +755,7 @@ export function createCompositeCapsuleMesh(): CapsuleMeshBundle {
     depthWrite: false,
   });
   const haloMesh = new THREE.Mesh(haloGeo, haloMat);
-  haloMesh.position.z = -0.15;
+  haloMesh.position.z = -0.12;
   group.add(haloMesh);
 
   return { group, bodyMat, badgeMesh, haloMat };
@@ -617,7 +772,7 @@ export function applyCapsuleStyle(bundle: CapsuleMeshBundle, type: CapsulePoweru
 
 /**
  * Builds a 4-part 3D Deflector Obstacle (`bumper`, `prism`, or `vortex`)
- * Supports both Fixed Anchored Obstacles and Random 10-20s Phasing Obstacles.
+ * Proportionally scaled down for the high-density mini-brick arena.
  */
 export interface ObstacleMeshBundle {
   group: THREE.Group;
@@ -631,7 +786,7 @@ export function createCompositeObstacleMesh(): ObstacleMeshBundle {
   const group = new THREE.Group();
 
   // 1. Core Deflector Crystal / Sphere
-  const coreGeo = new THREE.OctahedronGeometry(0.42, 0);
+  const coreGeo = new THREE.OctahedronGeometry(0.26, 0);
   const coreMat = new THREE.MeshStandardMaterial({
     color: 0xff1668,
     emissive: 0x990044,
@@ -643,7 +798,7 @@ export function createCompositeObstacleMesh(): ObstacleMeshBundle {
   group.add(coreMesh);
 
   // 2. Orbiting Bumper Torus Ring
-  const outerGeo = new THREE.TorusGeometry(0.56, 0.08, 16, 32);
+  const outerGeo = new THREE.TorusGeometry(0.36, 0.055, 16, 32);
   const outerMat = new THREE.MeshStandardMaterial({
     color: 0x00f0ff,
     emissive: 0x00b4ff,
@@ -655,7 +810,7 @@ export function createCompositeObstacleMesh(): ObstacleMeshBundle {
   group.add(outerRing);
 
   // 3. Teleport / Spawn Warning Ring
-  const warnGeo = new THREE.RingGeometry(0.68, 0.78, 32);
+  const warnGeo = new THREE.RingGeometry(0.44, 0.52, 32);
   const warnMat = new THREE.MeshBasicMaterial({
     color: 0xffe066,
     transparent: true,
@@ -669,7 +824,7 @@ export function createCompositeObstacleMesh(): ObstacleMeshBundle {
   group.add(warningRing);
 
   // 4. Radial Glow Backdrop
-  const glowGeo = new THREE.PlaneGeometry(1.9, 1.9);
+  const glowGeo = new THREE.PlaneGeometry(1.25, 1.25);
   const glowMat = new THREE.MeshBasicMaterial({
     map: getRadialGlowTexture(),
     color: 0xff1688,

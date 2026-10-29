@@ -13,73 +13,73 @@ export const BRICK_PALETTE: Record<
   }
 > = {
   pink: {
-    baseHex: 0xff1668,
-    emissiveHex: 0x990038,
-    rimHex: 0xff66a3,
-    topGrad: '#FF4088',
-    botGrad: '#E00852',
-    borderStroke: '#FF94BE',
+    baseHex: 0xff006e,
+    emissiveHex: 0xc20052,
+    rimHex: 0xff70a6,
+    topGrad: '#FF2A85',
+    botGrad: '#D90057',
+    borderStroke: '#FF99C8',
   },
   yellow: {
-    baseHex: 0xffb300,
-    emissiveHex: 0x804d00,
-    rimHex: 0xffe066,
-    topGrad: '#FFD026',
-    botGrad: '#EB9200',
-    borderStroke: '#FFF099',
+    baseHex: 0xffd600,
+    emissiveHex: 0xb87d00,
+    rimHex: 0xfff066,
+    topGrad: '#FFEA00',
+    botGrad: '#FF9E00',
+    borderStroke: '#FFF799',
   },
   green: {
-    baseHex: 0x08dd38,
-    emissiveHex: 0x006618,
-    rimHex: 0x66ff8c,
-    topGrad: '#2BF056',
-    botGrad: '#05B52B',
-    borderStroke: '#99FFAE',
+    baseHex: 0x00f566,
+    emissiveHex: 0x009938,
+    rimHex: 0x70ffaa,
+    topGrad: '#24FF7B',
+    botGrad: '#00C846',
+    borderStroke: '#ADFFCC',
   },
   blue: {
-    baseHex: 0x0084ff,
-    emissiveHex: 0x003b80,
-    rimHex: 0x66bdff,
-    topGrad: '#2BA2FF',
-    botGrad: '#0068E0',
-    borderStroke: '#99D3FF',
+    baseHex: 0x00b4ff,
+    emissiveHex: 0x0062cc,
+    rimHex: 0x70dfff,
+    topGrad: '#00E5FF',
+    botGrad: '#0066FF',
+    borderStroke: '#A8F0FF',
   },
   purple: {
-    baseHex: 0x8824ff,
-    emissiveHex: 0x3f0088,
-    rimHex: 0xc488ff,
-    topGrad: '#A24BFF',
-    botGrad: '#6C12E0',
-    borderStroke: '#DCAEFF',
+    baseHex: 0x9d24ff,
+    emissiveHex: 0x6200b8,
+    rimHex: 0xd288ff,
+    topGrad: '#C44DFF',
+    botGrad: '#7B00E0',
+    borderStroke: '#E8B8FF',
   },
   orange: {
-    baseHex: 0xff5500,
-    emissiveHex: 0x882200,
-    rimHex: 0xff9966,
-    topGrad: '#FF7724',
-    botGrad: '#E03D00',
-    borderStroke: '#FFB894',
+    baseHex: 0xff5e00,
+    emissiveHex: 0xb83300,
+    rimHex: 0xffa366,
+    topGrad: '#FF8811',
+    botGrad: '#F03200',
+    borderStroke: '#FFCAA3',
   },
   lightning: {
-    baseHex: 0x0f172a,
-    emissiveHex: 0x0c4a6e,
+    baseHex: 0x082f49,
+    emissiveHex: 0x0284c7,
     rimHex: 0x38bdf8,
-    topGrad: '#162544',
-    botGrad: '#080E1E',
-    borderStroke: '#7DD3FC',
+    topGrad: '#0E588A',
+    botGrad: '#071936',
+    borderStroke: '#38BDF8',
   },
   metal: {
-    baseHex: 0x64748b,
-    emissiveHex: 0x1e293b,
-    rimHex: 0xcbd5e1,
-    topGrad: '#94A3B8',
-    botGrad: '#334155',
-    borderStroke: '#E2E8F0',
+    baseHex: 0x94a3b8,
+    emissiveHex: 0x334155,
+    rimHex: 0xe2e8f0,
+    topGrad: '#CBD5E1',
+    botGrad: '#475569',
+    borderStroke: '#F8FAFC',
   },
 };
 
 const textureCache = new Map<string, THREE.CanvasTexture>();
-let maxAnisotropy = 4;
+let maxAnisotropy = 8;
 
 export function setTextureMaxAnisotropy(aniso: number) {
   maxAnisotropy = Math.max(1, aniso);
@@ -113,73 +113,85 @@ export function getBrickFaceTexture(
   isRival: boolean = false
 ): THREE.CanvasTexture {
   const clampedHp = Math.max(0, Math.ceil(hp));
-  const key = `${type}_${color}_${clampedHp}_${isRival ? 'rival' : 'std'}`;
+  const key = `uhd_vec_${type}_${color}_${clampedHp}_${isRival ? 'rival' : 'std'}`;
   const existing = textureCache.get(key);
   if (existing) return existing;
 
+  // Ultra-HD 2x Retina Vector Canvas (1024 x 680)
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 340;
+  canvas.width = 1024;
+  canvas.height = 680;
   const ctx = canvas.getContext('2d')!;
+  ctx.scale(2, 2);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   const pal = BRICK_PALETTE[color];
 
-  // 1. Glossy outer bevel fill
-  const outerGrad = ctx.createLinearGradient(0, 0, 0, 340);
-  outerGrad.addColorStop(0, isRival ? '#FFD700' : pal.borderStroke);
-  outerGrad.addColorStop(0.5, pal.topGrad);
-  outerGrad.addColorStop(1, pal.botGrad);
-  drawRoundedRect(ctx, 8, 8, 496, 324, 52);
-  ctx.fillStyle = outerGrad;
+  // 1. Crisp luminous outer vector border
+  drawRoundedRect(ctx, 0, 0, 512, 340, 24);
+  ctx.fillStyle = isRival ? '#FFD700' : pal.borderStroke;
   ctx.fill();
 
-  // 2. Inner candy body
-  const innerGrad = ctx.createLinearGradient(0, 24, 0, 316);
+  // 2. Deep vibrant vector body gradient
+  const innerGrad = ctx.createLinearGradient(0, 8, 0, 332);
   innerGrad.addColorStop(0, pal.topGrad);
+  innerGrad.addColorStop(0.55, pal.topGrad);
   innerGrad.addColorStop(1, pal.botGrad);
-  drawRoundedRect(ctx, 22, 22, 468, 296, 40);
+  drawRoundedRect(ctx, 10, 10, 492, 320, 18);
   ctx.fillStyle = innerGrad;
   ctx.fill();
 
-  // 3. Top glossy highlight bar
-  const glossGrad = ctx.createLinearGradient(0, 26, 0, 110);
+  // 3. Crisp inner vector bevel contour line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.48)';
+  ctx.lineWidth = 4;
+  drawRoundedRect(ctx, 14, 14, 484, 312, 15);
+  ctx.stroke();
+
+  // 4. Crisp vector top specular highlight ribbon
+  const glossGrad = ctx.createLinearGradient(0, 16, 0, 74);
   glossGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
-  glossGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
-  drawRoundedRect(ctx, 36, 28, 440, 82, 30);
+  glossGrad.addColorStop(1, 'rgba(255, 255, 255, 0.04)');
+  drawRoundedRect(ctx, 20, 18, 472, 48, 12);
   ctx.fillStyle = glossGrad;
+  ctx.fill();
+
+  // 5. Subtle bottom rim shadow for crisp vector relief
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+  drawRoundedRect(ctx, 20, 298, 472, 22, 10);
   ctx.fill();
 
   // Optional Rival Revenge Border & Crown Badge
   if (isRival) {
     ctx.strokeStyle = '#FFD700';
     ctx.lineWidth = 10;
-    drawRoundedRect(ctx, 18, 18, 476, 304, 42);
+    drawRoundedRect(ctx, 12, 12, 488, 316, 18);
     ctx.stroke();
 
     ctx.font = '800 38px "Outfit", sans-serif';
     ctx.fillStyle = '#FFD700';
     ctx.textAlign = 'left';
-    ctx.fillText('★ REVANCHE', 42, 68);
+    ctx.fillText('★ REVANCHE', 34, 62);
   }
 
-  // 4. Content by brick type
+  // 6. Content by brick type
   if (type === 'lightning') {
-    const rad = ctx.createRadialGradient(256, 170, 15, 256, 170, 210);
-    rad.addColorStop(0, 'rgba(56, 189, 248, 0.55)');
-    rad.addColorStop(0.6, 'rgba(14, 116, 144, 0.25)');
-    rad.addColorStop(1, 'rgba(8, 14, 30, 0.95)');
-    drawRoundedRect(ctx, 24, 24, 464, 292, 38);
+    const rad = ctx.createRadialGradient(256, 170, 15, 256, 170, 215);
+    rad.addColorStop(0, 'rgba(0, 240, 255, 0.78)');
+    rad.addColorStop(0.55, 'rgba(2, 132, 199, 0.42)');
+    rad.addColorStop(1, 'rgba(7, 25, 54, 0.96)');
+    drawRoundedRect(ctx, 20, 20, 472, 300, 20);
     ctx.fillStyle = rad;
     ctx.fill();
 
-    ctx.strokeStyle = '#7DD3FC';
+    ctx.strokeStyle = '#38BDF8';
     ctx.lineWidth = 7;
-    drawRoundedRect(ctx, 26, 26, 460, 288, 36);
+    drawRoundedRect(ctx, 24, 24, 464, 292, 18);
     ctx.stroke();
 
     ctx.save();
     ctx.translate(256, 170);
     ctx.shadowColor = '#00F0FF';
-    ctx.shadowBlur = 32;
+    ctx.shadowBlur = 26;
 
     ctx.beginPath();
     ctx.moveTo(22, -108);
@@ -193,11 +205,11 @@ export function getBrickFaceTexture(
     const boltGrad = ctx.createLinearGradient(-40, -100, 40, 100);
     boltGrad.addColorStop(0, '#FFFFFF');
     boltGrad.addColorStop(0.45, '#7DD3FC');
-    boltGrad.addColorStop(1, '#00B4FF');
+    boltGrad.addColorStop(1, '#00E5FF');
     ctx.fillStyle = boltGrad;
     ctx.fill();
 
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 7;
     ctx.strokeStyle = '#FFFFFF';
     ctx.stroke();
     ctx.restore();
@@ -205,16 +217,16 @@ export function getBrickFaceTexture(
     ctx.save();
     ctx.translate(256, 178);
 
-    ctx.fillStyle = color === 'pink' ? 'rgba(255, 160, 200, 0.55)' : 'rgba(255, 80, 120, 0.48)';
+    ctx.fillStyle = color === 'pink' ? 'rgba(255, 190, 220, 0.72)' : 'rgba(255, 75, 130, 0.65)';
     ctx.beginPath();
-    ctx.ellipse(-105, 16, 26, 15, 0, 0, Math.PI * 2);
+    ctx.ellipse(-105, 16, 28, 16, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(105, 16, 26, 15, 0, 0, Math.PI * 2);
+    ctx.ellipse(105, 16, 28, 16, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = '#1E0B28';
-    ctx.lineWidth = 18;
+    ctx.strokeStyle = '#14051E';
+    ctx.lineWidth = 20;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -227,24 +239,27 @@ export function getBrickFaceTexture(
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(0, 6, 34, 0, Math.PI, false);
+    ctx.arc(0, 6, 35, 0, Math.PI, false);
     ctx.closePath();
-    ctx.fillStyle = '#1E0B28';
+    ctx.fillStyle = '#14051E';
     ctx.fill();
 
     ctx.save();
     ctx.clip();
-    ctx.fillStyle = '#FF4D88';
+    ctx.fillStyle = '#FF3377';
     ctx.beginPath();
-    ctx.arc(0, 38, 24, 0, Math.PI * 2);
+    ctx.arc(0, 38, 25, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
     if (clampedHp > 10) {
-      ctx.font = '800 44px "Outfit", sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.font = '900 48px "Outfit", sans-serif';
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = 'rgba(15, 5, 30, 0.78)';
       ctx.textAlign = 'right';
-      ctx.fillText(String(clampedHp), 205, -96);
+      ctx.strokeText(String(clampedHp), 212, -94);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(String(clampedHp), 212, -94);
     }
 
     ctx.restore();
@@ -252,29 +267,29 @@ export function getBrickFaceTexture(
     ctx.save();
     ctx.translate(256, 178);
 
-    ctx.fillStyle = 'rgba(255, 85, 125, 0.5)';
+    ctx.fillStyle = 'rgba(255, 75, 130, 0.65)';
     ctx.beginPath();
-    ctx.ellipse(-105, 18, 26, 15, 0, 0, Math.PI * 2);
+    ctx.ellipse(-105, 18, 28, 16, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(105, 18, 26, 15, 0, 0, Math.PI * 2);
+    ctx.ellipse(105, 18, 28, 16, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#1E0B28';
+    ctx.fillStyle = '#14051E';
     ctx.beginPath();
-    ctx.arc(-68, -14, 24, 0, Math.PI * 2);
+    ctx.arc(-68, -14, 25, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
-    ctx.arc(-75, -22, 9, 0, Math.PI * 2);
+    ctx.arc(-75, -22, 9.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(-59, -6, 4.5, 0, Math.PI * 2);
+    ctx.arc(-59, -6, 5, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = '#1E0B28';
-    ctx.lineWidth = 17;
+    ctx.strokeStyle = '#14051E';
+    ctx.lineWidth = 19;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
@@ -284,53 +299,63 @@ export function getBrickFaceTexture(
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(0, 8, 32, 0, Math.PI, false);
+    ctx.arc(0, 8, 33, 0, Math.PI, false);
     ctx.closePath();
-    ctx.fillStyle = '#1E0B28';
+    ctx.fillStyle = '#14051E';
     ctx.fill();
 
     ctx.save();
     ctx.clip();
-    ctx.fillStyle = '#FF4D88';
+    ctx.fillStyle = '#FF3377';
     ctx.beginPath();
-    ctx.arc(6, 36, 22, 0, Math.PI * 2);
+    ctx.arc(6, 36, 23, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
     if (clampedHp > 10) {
-      ctx.font = '800 44px "Outfit", sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.font = '900 48px "Outfit", sans-serif';
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = 'rgba(15, 5, 30, 0.78)';
       ctx.textAlign = 'right';
-      ctx.fillText(String(clampedHp), 205, -96);
+      ctx.strokeText(String(clampedHp), 212, -94);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(String(clampedHp), 212, -94);
     }
 
     ctx.restore();
   } else if (type === 'metal') {
-    ctx.fillStyle = '#1E293B';
+    ctx.fillStyle = '#0F172A';
     [
-      [60, 60],
-      [452, 60],
-      [60, 280],
-      [452, 280],
+      [56, 56],
+      [456, 56],
+      [56, 284],
+      [456, 284],
     ].forEach(([rx, ry]) => {
       ctx.beginPath();
-      ctx.arc(rx, ry, 14, 0, Math.PI * 2);
+      ctx.arc(rx, ry, 15, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = '#94A3B8';
+      ctx.beginPath();
+      ctx.arc(rx - 3, ry - 3, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#0F172A';
     });
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(110, 170);
-    ctx.lineTo(402, 170);
+    ctx.moveTo(106, 170);
+    ctx.lineTo(406, 170);
     ctx.stroke();
   } else {
     ctx.save();
-    ctx.font = '800 142px "Outfit", sans-serif';
+    ctx.font = '900 152px "Outfit", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 6;
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 16;
+    ctx.strokeStyle = 'rgba(15, 6, 32, 0.72)';
+    ctx.strokeText(String(clampedHp), 256, 178);
     ctx.fillStyle = isRival ? '#FFFBEB' : '#FFFFFF';
     ctx.fillText(String(clampedHp), 256, 178);
     ctx.restore();
@@ -338,6 +363,9 @@ export function getBrickFaceTexture(
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
   texture.anisotropy = maxAnisotropy;
   texture.needsUpdate = true;
 
@@ -382,7 +410,7 @@ export const CAPSULE_META: Record<
     bgTop: '#FB7185',
     bgBot: '#BE123C',
     border: '#FFE4E6',
-    announcement: '🔫 FUSIL MITRAILLEUSE ACTIVÉ (VISÉE CURSEUR) !',
+    announcement: '🔫 MITRAILLEUSE ACTIVE (5s MAX · VISÉE CURSEUR) !',
   },
   safety_wall: {
     label: 'BOUCLIER',

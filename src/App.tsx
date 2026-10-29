@@ -36,16 +36,16 @@ const INITIAL_HUD_SNAPSHOT: GameHudSnapshot = {
     paddleScaleMode: 'normal',
     paddleScaleFactor: 1.0,
     paddleScaleTimeLeft: 0,
-    ballStuckToPaddle: false,
-    aimAngleRad: 0.28,
+    ballStuckToPaddle: true,
+    aimAngleRad: 0.24,
     isFeverMode: false,
     feverProgress: 0.35,
     nextObstacleShiftSec: 14,
     capsulesDroppedInMatch: 0,
     maxCapsulesInMatch: 3,
   },
-  mascotMood: 'ecstatic',
-  mascotMessage: '3 Vies Pleines · Barème de score réaliste & bonus rares !',
+  mascotMood: 'happy',
+  mascotMessage: 'Clique ou appuie sur Espace pour lancer la balle !',
   activeBallsCount: 1,
   destructibleRemaining: 21,
   hasRivalBrick: false,
@@ -158,28 +158,18 @@ export default function App() {
         engineRef={engineRef}
       />
 
-      {/* Top HUD: Pause (II), Classic/Rival Switcher, Mon QG Profil, Hall of Fame, Score + Crown, and 3 Full Hearts */}
+      {/* Minimal In-Game Top HUD: ONLY Pause (II), Compact Score/Level Progress, and 3 Hearts */}
       <TopHud
         hud={hud}
-        isMuted={isMuted}
         onTogglePause={handleTogglePause}
-        onToggleMute={handleToggleMute}
-        onOpenLevelSelect={() => setGameState('level_select')}
-        onOpenRivalBrowser={() => setGameState('rival_browser')}
-        onOpenUserProfile={() => setGameState('user_profile')}
         onOpenRivalEditor={() => setGameState('rival_editor')}
-        onOpenHallOfFame={() => setGameState('hall_of_fame')}
-        onTriggerDemoBurst={handleTriggerDemoBurst}
       />
 
-      {/* Left Flank: 3 Booster Bubbles (Aimant, Fusée, Orbe) + Collapsible Bottom Bar */}
+      {/* Left Flank: ONLY the 3 Booster Bubbles (Aimant, Fusée, Orbe) */}
       <BoosterDock
         boosters={hud.boosters}
         activeBoosters={hud.activeBoosters}
-        currentLevel={hud.level}
         onActivateBooster={handleActivateBooster}
-        onSelectLevel={handleStartCampaignLevel}
-        onTriggerDemoBurst={handleTriggerDemoBurst}
       />
 
       {/* Bottom-Right: Crowned Pink Kawaii Mascot with Real-Time Reactions */}
@@ -189,10 +179,12 @@ export default function App() {
         onClickMascot={handleTriggerDemoBurst}
       />
 
-      {/* Classic Game Modals: Title Screen, Level Select (1-12), Pause, Victory, Near-Miss Game Over */}
+      {/* Classic Game Modals & Complete Pause Command Hub */}
       <GameModals
         gameState={gameState}
         hud={hud}
+        isMuted={isMuted}
+        onToggleMute={handleToggleMute}
         onStartLevel7Capture={handleStartLevel7Capture}
         onStartCampaignLevel={handleStartCampaignLevel}
         onResume={() => setGameState('playing')}
@@ -203,7 +195,7 @@ export default function App() {
         onOpenHallOfFame={() => setGameState('hall_of_fame')}
       />
 
-      {/* Mode Rival Browser, Studio Créateur (Auto-Save + 420 PV Budget + Free Test), Mon QG Profil & Hall of Fame */}
+      {/* Mode Rival Browser, Studio Créateur (8x6 Mini-Bricks + Auto-Save + Free Test), Mon QG Profil & Hall of Fame */}
       <RivalStudioModal
         gameState={gameState}
         hud={hud}

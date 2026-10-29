@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { createCosmicBackgroundSystem } from '../game/cosmicBackgrounds';
 import { getLevelById } from '../game/levels';
 import {
   applyCapsuleStyle,
@@ -14,13 +15,16 @@ import {
   createCompositeRocketMesh,
   createCompositeStarMesh,
   createCurvedSpaceArena,
+  createPaddleTrailMesh,
   createPlasmaBulletMesh,
   createSafetyWallMesh,
   ObstacleMeshBundle,
   OrbVisualBundle,
+  PADDLE_TRAIL_SEGMENTS,
   styleObstacleByKind,
   TRAIL_SEGMENTS,
   updateOrbTrailGeometry,
+  updatePaddleTrailGeometry,
 } from '../game/models';
 import {
   incrementProfileStats,
@@ -191,12 +195,12 @@ interface GameCanvas3DProps {
 }
 
 const CANONICAL_HALF_WIDTH = 5.35;
-const ARENA_TOP_Y = 5.55;
-const PADDLE_Y = -5.45;
-const SAFETY_WALL_Y = PADDLE_Y - 0.64;
-const BASE_PADDLE_WIDTH = 3.15;
-const PADDLE_HALF_H = 0.34;
-const BALL_RADIUS = 0.32;
+const ARENA_TOP_Y = 5.65;
+const PADDLE_Y = -5.55;
+const SAFETY_WALL_Y = PADDLE_Y - 0.56;
+const BASE_PADDLE_WIDTH = 2.15;
+const PADDLE_HALF_H = 0.22;
+const BALL_RADIUS = 0.19;
 const MAX_BALLS = 45;
 const MAX_CAPSULES = 6;
 const MAX_OBSTACLES = 8;
@@ -302,8 +306,9 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
     centerBurstLight.position.set(0.1, 1.45, 2.2);
     scene.add(centerBurstLight);
 
-    // 4. Curved Space Arena & Starfield
+    // 4. Curved Space Arena, Starfield & 12-Biome 3D Cosmic Background System
     const { starfield, floorGlow } = createCurvedSpaceArena(scene);
+    const cosmicBg = createCosmicBackgroundSystem(scene);
 
     // 5. Central Explosion Flare Sprite
     const burstSpriteGroup = new THREE.Group();
@@ -358,10 +363,93 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
     if (shardInstanced.instanceColor) shardInstanced.instanceColor.needsUpdate = true;
     scene.add(shardInstanced);
 
-    // 7. Paddle & Safety Wall Setup
+    // 7. Paddle, 4x Colorful Paddle Trail, Wake Stardust & Safety Wall Setup
     const paddleObj = createCompositePaddleMesh(BASE_PADDLE_WIDTH);
     paddleObj.group.position.set(0, PADDLE_Y, 0);
     scene.add(paddleObj.group);
+
+    const paddleTrailObj = createPaddleTrailMesh();
+    scene.add(paddleTrailObj.trailMesh);
+
+    // Sparkling Colorful Wake Dust System ("poussière traînée" for both Paddle & Ball)
+    const MAX_WAKE_DUST = 240;
+    interface WakeDustMote {
+      x: number;
+      y: number;
+      z: number;
+      vx: number;
+      vy: number;
+      life: number;
+      maxLife: number;
+      baseR: number;
+      baseG: number;
+      baseB: number;
+    }
+    const wakeDustPool: WakeDustMote[] = [];
+    const wakeDustPositions = new Float32Array(MAX_WAKE_DUST * 3);
+    const wakeDustColors = new Float32Array(MAX_WAKE_DUST * 3);
+    for (let i = 0; i < MAX_WAKE_DUST; i++) {
+      wakeDustPool.push({
+        x: 0,
+        y: -99,
+        z: 0.12,
+        vx: 0,
+        vy: 0,
+        life: 0,
+        maxLife: 1,
+        baseR: 0,
+        baseG: 0.94,
+        baseB: 1,
+      });
+      wakeDustPositions[i * 3 + 1] = -99;
+    }
+    const wakeDustGeo = new THREE.BufferGeometry();
+    wakeDustGeo.setAttribute('position', new THREE.BufferAttribute(wakeDustPositions, 3));
+    wakeDustGeo.setAttribute('color', new THREE.BufferAttribute(wakeDustColors, 3));
+    const wakeDustMat = new THREE.PointsMaterial({
+      size: 0.28,
+      map: getRadialGlowTexture(),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.92,
+      toneMapped: false,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const wakeDustPoints = new THREE.Points(wakeDustGeo, wakeDustMat);
+    wakeDustPoints.frustumCulled = false;
+    scene.add(wakeDustPoints);
+
+    const wakeDustPalette = [
+      new THREE.Color(0x00f0ff),
+      new THREE.Color(0xa855f7),
+      new THREE.Color(0xff1688),
+      new THREE.Color(0xffd700),
+      new THREE.Color(0x24ff7b),
+    ];
+    let wakeDustCursor = 0;
+    const spawnWakeDust = (
+      wx: number,
+      wy: number,
+      vx: number,
+      vy: number,
+      spread: number = 0.22,
+      lifeSec: number = 0.65
+    ) => {
+      const m = wakeDustPool[wakeDustCursor];
+      wakeDustCursor = (wakeDustCursor + 1) % MAX_WAKE_DUST;
+      const col = wakeDustPalette[Math.floor(Math.random() * wakeDustPalette.length)];
+      m.x = wx + (Math.random() - 0.5) * spread;
+      m.y = wy + (Math.random() - 0.5) * spread;
+      m.z = 0.13;
+      m.vx = vx + (Math.random() - 0.5) * 0.65;
+      m.vy = vy + (Math.random() - 0.5) * 0.65;
+      m.maxLife = lifeSec * (0.75 + Math.random() * 0.5);
+      m.life = m.maxLife;
+      m.baseR = col.r;
+      m.baseG = col.g;
+      m.baseB = col.b;
+    };
 
     const safetyWallObj = createSafetyWallMesh();
     safetyWallObj.group.position.set(0, SAFETY_WALL_Y, 0.1);
@@ -439,8 +527,8 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
         kind: 'bumper',
         isFixed: false,
         x: 0,
-        y: -1.8,
-        radius: 0.62,
+        y: -2.0,
+        radius: 0.38,
         active: false,
         spawnWarmup: 0,
         hitPulse: 0,
@@ -500,6 +588,9 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
     let initialProgressBonus = 0.52;
     let totalMaxHpInLevel = 100;
     let damageDealtInLevel = 0;
+    let totalDestructibleBricksInLevel = 48;
+    let bricksBrokenInLevel = 0;
+    let manualLaunchCooldown = 0;
 
     let boosterStock = {
       magnet: 2,
@@ -551,23 +642,32 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
 
     let aimAngleRad = 0.28;
     let mascotMood: MascotMood = 'ecstatic';
-    let mascotMessage = '3 Vies Pleines · Charbonne pour mériter tes bonus !';
+    let mascotMessage = 'Clique ou appuie sur Espace pour donner le coup d’envoi !';
     let mascotMoodTimer = 0;
 
-    let targetPaddleX = -0.15;
-    let currentPaddleX = -0.15;
+    let targetPaddleX = 0;
+    let currentPaddleX = 0;
     let hitstopTimer = 0;
     let cameraShakeIntensity = 0;
     let centralBurstTimer = 0;
     let descendTimer = 0;
     let descendInterval = 0;
+    let matchElapsedTime = 0;
 
     const heldKeys = new Set<string>();
 
     const getEffectiveTargetBallSpeed = () => {
-      if (speedModMode === 'fast') return ballBaseSpeed * 1.28;
-      if (speedModMode === 'slow') return ballBaseSpeed * 0.75;
-      return ballBaseSpeed;
+      // Dynamic, addictive initial pace (+14% faster) that accelerates smoothly with each brick broken (+0.9% per brick + ratio bonus, up to +42%)
+      const brickRatio =
+        totalDestructibleBricksInLevel > 0
+          ? bricksBrokenInLevel / totalDestructibleBricksInLevel
+          : 0;
+      const progressiveBrickAccel =
+        1.0 + Math.min(0.42, bricksBrokenInLevel * 0.009 + brickRatio * 0.16);
+      const currentBase = ballBaseSpeed * progressiveBrickAccel;
+      if (speedModMode === 'fast') return currentBase * 1.22;
+      if (speedModMode === 'slow') return currentBase * 0.76;
+      return currentBase;
     };
 
     // Dynamic 100% Full-Screen Frustum & Brick Layout Resizer
@@ -677,7 +777,7 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       bricksBrokenSinceLastDrop++;
       if (!isRevengeBrick) {
         // Must have worked hard since the last drop!
-        if (bricksBrokenSinceLastDrop < 4 || paddleBouncesSinceLastDrop < 2) {
+        if (bricksBrokenSinceLastDrop < 7 || paddleBouncesSinceLastDrop < 3) {
           return;
         }
         // Unscripted dynamic probability (higher in clutch 1-heart situations)
@@ -769,11 +869,11 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
 
         const kind = kinds[(randomSpawned + levelId + Math.floor(Math.random() * 3)) % kinds.length];
         let ox = 0;
-        let oy = -1.8;
+        let oy = -2.1;
         for (let attempt = 0; attempt < 14; attempt++) {
           ox = (Math.random() - 0.5) * (arenaHalfWidth * 1.45);
-          oy = -3.35 + Math.random() * 2.45;
-          const tooClose = placedPositions.some((p) => Math.hypot(p.x - ox, p.y - oy) < 1.85);
+          oy = -3.65 + Math.random() * 2.15;
+          const tooClose = placedPositions.some((p) => Math.hypot(p.x - ox, p.y - oy) < 1.35);
           if (!tooClose) break;
         }
         placedPositions.push({ x: ox, y: oy });
@@ -936,17 +1036,19 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
           b.stuckOffsetX = x - currentPaddleX;
           b.visual.orbGroup.position.set(x, y, 0.15);
           b.visual.orbGroup.visible = true;
-          b.visual.trailMesh.visible = true;
+          b.visual.trailMesh.visible = !stuck;
+
+          const spd = Math.hypot(vx, vy);
+          const dirX = spd > 0.001 ? vx / spd : 0;
+          const dirY = spd > 0.001 ? vy / spd : 1;
+          const stepDist = stuck ? 0 : presetArcHistory ? 0.055 : 0.035;
 
           for (let j = 0; j < TRAIL_SEGMENTS; j++) {
-            if (presetArcHistory) {
-              const t = j / (TRAIL_SEGMENTS - 1);
-              const arcX = THREE.MathUtils.lerp(x, -0.55, t) - Math.sin(t * Math.PI) * 0.38;
-              const arcY = THREE.MathUtils.lerp(y, PADDLE_Y + 0.55, Math.pow(t, 1.15));
-              b.visual.history[j].set(arcX, arcY, 0.1);
-            } else {
-              b.visual.history[j].set(x, y, 0.1);
-            }
+            b.visual.history[j].set(
+              x - dirX * (j * stepDist),
+              y - dirY * (j * stepDist),
+              0.148
+            );
           }
           updateOrbTrailGeometry(b.visual);
           return b;
@@ -1003,7 +1105,12 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       levelAuthor = def.author;
       levelComplexity = def.complexityScore;
       activeRivalLevelId = def.rivalLevelId;
-      ballBaseSpeed = def.ballSpeed;
+      // Slightly faster, punchy initial ball speed (~7.2 to 9.3 u/s) that progressively accelerates as bricks are broken
+      ballBaseSpeed = def.ballSpeed * 0.73;
+      matchElapsedTime = 0;
+      bricksBrokenInLevel = 0;
+      totalDestructibleBricksInLevel = 0;
+      manualLaunchCooldown = 0.2;
       currentFixedBlueprints = def.fixedObstacles ?? [];
       targetRandomObstacleCount = def.randomObstacleCount ?? 1;
       obstacleShiftMinSec = def.obstacleShiftMinSec ?? 10;
@@ -1072,10 +1179,13 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       lastPowerupLabel = null;
 
       updateCameraFraming();
+      cosmicBg.setLevelBiome(
+        def.isRivalLevel ? ((def.complexityScore ?? 7) % 12) + 1 : def.id
+      );
 
       def.bricks.forEach((bp, idx) => {
-        const canonicalW = bp.width ?? 1.68;
-        const h = bp.height ?? 1.08;
+        const canonicalW = bp.width ?? 1.16;
+        const h = bp.height ?? 0.64;
         const canonicalX = bp.x ?? 0;
         const by = bp.y ?? 0;
 
@@ -1094,6 +1204,7 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
 
         if (bp.type !== 'metal') {
           totalMaxHpInLevel += bp.hp;
+          totalDestructibleBricksInLevel++;
         }
 
         activeBricks.push({
@@ -1121,54 +1232,49 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       // Spawn Fixed + Random Phasing Obstacles
       setupAndCycleObstacles(true, false);
 
+      // NEVER auto-launch! Every level (including Level 7 on startup) waits on the paddle for manual player kickoff
       if (def.id === 7 && !def.isRivalLevel && !resetScoreAndBoosters) {
         score = def.initialScore ?? 640;
         multiplier = def.initialMultiplier ?? 2;
-        initialProgressBonus = def.initialProgressBonus ?? 0.52;
-        boosterStock = { magnet: 2, rocket: 1, multiball: 3 };
-        targetPaddleX = -0.15;
-        currentPaddleX = -0.15;
-        paddleObj.group.position.x = currentPaddleX;
-
-        const speed = ballBaseSpeed;
-        const angle = 0.34;
-        activateBall(
-          0.95,
-          -1.45,
-          Math.sin(angle) * speed,
-          Math.cos(angle) * speed,
-          false,
-          true
-        );
-
-        spawnFallingStar(arenaHalfWidth * 0.82, -1.75, -1.65);
-        spawnFallingStar(arenaHalfWidth * 0.68, -3.05, -1.65);
-
-        spawnCrystalExplosion(0.1, 1.38, 42, undefined, true);
-        setMascotReaction('ecstatic', '3 Vies Pleines · Barème de score réaliste & bonus rares !', 4.0);
-      } else {
-        if (resetScoreAndBoosters || def.isRivalLevel) {
-          score = 0;
-          multiplier = 1;
-          boosterStock = { magnet: 2, rocket: 1, multiball: 3 };
-        }
         initialProgressBonus = 0;
-        targetPaddleX = 0;
-        currentPaddleX = 0;
-        paddleObj.group.position.x = 0;
-
-        const speed = ballBaseSpeed;
-        activateBall(0, PADDLE_Y + 0.72, Math.sin(0.25) * speed, Math.cos(0.25) * speed, true, false);
-        setMascotReaction(
-          'happy',
-          def.isDraftTest
-            ? `Mode Test Brouillon : "${def.name}" (${def.complexityScore}/100) !`
-            : def.isRivalLevel
-            ? `Clash Rival : "${def.name}" par ${def.author} (${def.complexityScore}/100) !`
-            : `${def.name} · Vitesse ${def.ballSpeed.toFixed(1)} · 3 Vies !`,
-          3.5
-        );
+        boosterStock = { magnet: 2, rocket: 1, multiball: 3 };
+      } else if (resetScoreAndBoosters || def.isRivalLevel) {
+        score = 0;
+        multiplier = 1;
+        initialProgressBonus = 0;
+        boosterStock = { magnet: 2, rocket: 1, multiball: 3 };
+      } else {
+        initialProgressBonus = 0;
       }
+
+      targetPaddleX = 0;
+      currentPaddleX = 0;
+      paddleObj.group.position.x = 0;
+      for (let i = 0; i < PADDLE_TRAIL_SEGMENTS; i++) {
+        paddleTrailObj.history[i].set(0, PADDLE_Y, -0.05);
+      }
+      updatePaddleTrailGeometry(paddleTrailObj);
+      aimAngleRad = 0.24;
+
+      const speed = ballBaseSpeed;
+      activateBall(
+        0,
+        PADDLE_Y + 0.72,
+        Math.sin(aimAngleRad) * speed,
+        Math.cos(aimAngleRad) * speed,
+        true,
+        false
+      );
+
+      setMascotReaction(
+        'happy',
+        def.isDraftTest
+          ? `Test "${def.name}" · Clique ou Espace pour lancer la balle !`
+          : def.isRivalLevel
+          ? `Clash "${def.name}" par ${def.author} · Clique pour donner le coup d’envoi !`
+          : `${def.name} prêt · Clique ou appuie sur Espace pour lancer la balle !`,
+        4.0
+      );
 
       comboCount = 0;
       lastOvertakenRivalIdx = SOCIAL_RIVALS_LADDER.findIndex((r) => r.score > score);
@@ -1204,10 +1310,10 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       const pal = BRICK_PALETTE[brick.color];
       const miniBonusMult = paddleScaleMode === 'mini' ? 1.5 : 1;
       const speedBonusMult = speedModMode === 'fast' ? 1.35 : 1;
-      // Tightened realistic score: 1 pt per HP removed (scaled by modest multiplier x1..x4)
+      // Tightened realistic score for 50 mini-brick levels: ~1 pt per 2 HP removed + 15 pts per brick broken
       const dmgPoints = Math.max(
         1,
-        Math.round((actualDmg / 10) * 8 * multiplier * miniBonusMult * speedBonusMult)
+        Math.round((actualDmg / 10) * 4 * multiplier * miniBonusMult * speedBonusMult)
       );
       score += dmgPoints;
 
@@ -1223,7 +1329,21 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       if (brick.hp <= 0) {
         brick.alive = false;
         brick.bundle.group.visible = false;
+        bricksBrokenInLevel++;
         incrementProfileStats(1, 0);
+
+        // Smoothly nudge active balls toward the newly increased brick-break target speed
+        const updatedTargetSpd = getEffectiveTargetBallSpeed();
+        ballPool.forEach((b) => {
+          if (b.active && !b.stuckToPaddle) {
+            const cur = Math.hypot(b.vx, b.vy);
+            if (cur > 0.01) {
+              const nextS = THREE.MathUtils.lerp(cur, updatedTargetSpd, 0.35);
+              b.vx = (b.vx / cur) * nextS;
+              b.vy = (b.vy / cur) * nextS;
+            }
+          }
+        });
 
         if (brick.isRival) {
           score += 150 * multiplier;
@@ -1350,10 +1470,10 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
         stickyTimeLeft = 12.0;
         setMascotReaction('cheering', '🧲 BARRE COLLANTE ! Garde et vise tes billes !', 3.2);
       } else if (type === 'machine_gun') {
-        machineGunTimeLeft = 9.5;
-        machineGunFireCooldown = 0.1;
+        machineGunTimeLeft = 5.0; // Strict 5 seconds max duration!
+        machineGunFireCooldown = 0.08;
         paddleObj.gunTurret.visible = true;
-        setMascotReaction('ecstatic', '🔫 MITRAILLEUSE ACTIVE ! Vise avec ton curseur !', 3.6);
+        setMascotReaction('ecstatic', '🔫 MITRAILLEUSE (5s MAX) ! Vise avec ton curseur !', 3.4);
       } else if (type === 'safety_wall') {
         safetyWallTimeLeft = 18.0;
         safetyWallObj.group.visible = true;
@@ -1361,12 +1481,12 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       } else if (type === 'speed_fast') {
         speedModMode = 'fast';
         speedModTimeLeft = 11.0;
-        rescaleActiveBallsSpeed(ballBaseSpeed * 1.28);
-        setMascotReaction('ecstatic', '⚡ VITESSE TURBO (+28% · Points x1.5) !', 3.2);
+        rescaleActiveBallsSpeed(getEffectiveTargetBallSpeed());
+        setMascotReaction('ecstatic', '⚡ VITESSE TURBO (+25% · Points x1.5) !', 3.2);
       } else if (type === 'speed_slow') {
         speedModMode = 'slow';
         speedModTimeLeft = 11.0;
-        rescaleActiveBallsSpeed(ballBaseSpeed * 0.75);
+        rescaleActiveBallsSpeed(getEffectiveTargetBallSpeed());
         setMascotReaction('happy', '❄️ BALLE RALENTIE (-25%) ! Contrôle total !', 3.2);
       } else if (type === 'multiball_3') {
         multiplyActiveBalls(3);
@@ -1385,12 +1505,23 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
     const launchStuckBalls = () => {
       let launched = false;
       const spd = getEffectiveTargetBallSpeed();
+      const dirX = Math.sin(aimAngleRad);
+      const dirY = Math.cos(aimAngleRad);
       for (let i = 0; i < ballPool.length; i++) {
         const b = ballPool[i];
         if (b.active && b.stuckToPaddle) {
           b.stuckToPaddle = false;
-          b.vx = Math.sin(aimAngleRad) * spd;
-          b.vy = Math.cos(aimAngleRad) * spd;
+          b.vx = dirX * spd;
+          b.vy = dirY * spd;
+          b.visual.trailMesh.visible = true;
+          for (let j = 0; j < TRAIL_SEGMENTS; j++) {
+            b.visual.history[j].set(
+              b.x - dirX * (j * 0.032),
+              b.y - dirY * (j * 0.032),
+              0.148
+            );
+          }
+          updateOrbTrailGeometry(b.visual);
           launched = true;
         }
       }
@@ -1488,7 +1619,7 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
 
     const handlePointerDown = (e: PointerEvent) => {
       handlePointerMove(e);
-      if (gameStateRef.current === 'playing') {
+      if (gameStateRef.current === 'playing' && manualLaunchCooldown <= 0) {
         launchStuckBalls();
       }
     };
@@ -1550,7 +1681,9 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       const dt = Math.min(rawDt, 0.05);
       const elapsed = clock.getElapsedTime();
 
-      starfield.rotation.z = Math.sin(elapsed * 0.12) * 0.04;
+      // Ultra-slow rotation for the deep-space starfield
+      starfield.rotation.z = Math.sin(elapsed * 0.025) * 0.03;
+      cosmicBg.update(dt, elapsed, currentPaddleX);
 
       if (mascotMoodTimer > 0) {
         mascotMoodTimer -= dt;
@@ -1623,9 +1756,33 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       }
       targetPaddleX = THREE.MathUtils.clamp(targetPaddleX, -maxOffset, maxOffset);
 
+      const prevPaddleX = currentPaddleX;
       currentPaddleX = THREE.MathUtils.damp(currentPaddleX, targetPaddleX, 22, dt);
+      const paddleVx = dt > 0.0001 ? (currentPaddleX - prevPaddleX) / dt : 0;
       paddleObj.group.position.x = currentPaddleX;
       floorGlow.position.x = currentPaddleX * 0.65;
+
+      // Update 4x Longer Colorful Paddle Trail & Emit Sparkling Paddle Stardust
+      const pHist = paddleTrailObj.history;
+      for (let j = pHist.length - 1; j > 0; j--) {
+        pHist[j].lerp(pHist[j - 1], 0.85);
+      }
+      pHist[0].set(currentPaddleX, PADDLE_Y, -0.05);
+      updatePaddleTrailGeometry(paddleTrailObj);
+
+      if (Math.abs(paddleVx) > 0.8) {
+        const dustCount = Math.min(3, Math.ceil(Math.abs(paddleVx) * 0.18));
+        for (let d = 0; d < dustCount; d++) {
+          spawnWakeDust(
+            currentPaddleX + (Math.random() - 0.5) * (BASE_PADDLE_WIDTH * currentSmoothPaddleScale * 0.85),
+            PADDLE_Y + (Math.random() - 0.5) * 0.24,
+            -paddleVx * 0.18,
+            0.35 + Math.random() * 0.55,
+            0.18,
+            0.75
+          );
+        }
+      }
 
       // Active Power-up Timers
       if (magnetTimeLeft > 0 && gameStateRef.current === 'playing') {
@@ -1638,7 +1795,7 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
         speedModTimeLeft = Math.max(0, speedModTimeLeft - dt);
         if (speedModTimeLeft <= 0) {
           speedModMode = 'normal';
-          rescaleActiveBallsSpeed(ballBaseSpeed);
+          rescaleActiveBallsSpeed(getEffectiveTargetBallSpeed());
         }
       }
       if (safetyWallTimeLeft > 0 && gameStateRef.current === 'playing') {
@@ -1757,7 +1914,37 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       }
 
       // Advance active gameplay simulation
+      if (manualLaunchCooldown > 0) {
+        manualLaunchCooldown = Math.max(0, manualLaunchCooldown - dt);
+      }
       if (gameStateRef.current === 'playing') {
+        // Failsafe 1: If returning to 'playing' when the board has 0 destructible bricks left or 0 lives, reload the level cleanly
+        const remainingDestructible = activeBricks.filter(
+          (b) => b.alive && b.type !== 'metal'
+        ).length;
+        if (lives <= 0 || remainingDestructible === 0) {
+          loadLevel(levelId, false);
+        }
+
+        // Failsafe 2: NEVER allow a match in 'playing' state to have 0 balls!
+        const hasAnyActiveBall = ballPool.some((b) => b.active);
+        if (!hasAnyActiveBall) {
+          const fallbackSpd = getEffectiveTargetBallSpeed();
+          manualLaunchCooldown = 0.2;
+          activateBall(
+            currentPaddleX,
+            PADDLE_Y + 0.72,
+            Math.sin(aimAngleRad) * fallbackSpd,
+            Math.cos(aimAngleRad) * fallbackSpd,
+            true,
+            false
+          );
+          emitHudUpdate();
+        }
+
+        if (!anyBallStuck) {
+          matchElapsedTime += dt;
+        }
         if (hitstopTimer > 0) {
           hitstopTimer = Math.max(0, hitstopTimer - dt);
         } else {
@@ -1817,6 +2004,13 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
             const ball = ballPool[bIdx];
             if (!ball.active) continue;
 
+            // Sanitize any NaN or stalled coordinates so a ball can never vanish
+            if (!Number.isFinite(ball.x) || !Number.isFinite(ball.y)) {
+              ball.x = currentPaddleX;
+              ball.y = PADDLE_Y + 0.72;
+              ball.stuckToPaddle = true;
+            }
+
             ball.visual.shellMat.emissive.setHex(
               isFeverMode
                 ? 0xffb800
@@ -1834,7 +2028,15 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
                 arenaHalfWidth - ball.radius
               );
               ball.y = PADDLE_Y + PADDLE_HALF_H + ball.radius + 0.04;
+              ball.visual.trailMesh.visible = false;
+              const hist = ball.visual.history;
+              for (let j = 0; j < hist.length; j++) {
+                hist[j].set(ball.x, ball.y, 0.148);
+              }
             } else {
+              ball.visual.trailMesh.visible = true;
+              const hist = ball.visual.history;
+
               for (let step = 0; step < SUB_STEPS; step++) {
                 ball.x += ball.vx * subDt;
                 ball.y += ball.vy * subDt;
@@ -1886,13 +2088,9 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
                     break;
                   } else {
                     ball.y = PADDLE_Y + PADDLE_HALF_H + ball.radius + 0.02;
-                    // Dynamic kinetic speed variation: edge hits accelerate slightly, center hits stabilize!
-                    const edgeBoost = 0.94 + Math.abs(hitOffset) * 0.18 + (Math.random() - 0.5) * 0.05;
-                    const speed = THREE.MathUtils.clamp(
-                      targetSpd * edgeBoost,
-                      targetSpd * 0.88,
-                      targetSpd * 1.32
-                    );
+                    // Controlled speed on paddle bounce (no runaway acceleration)
+                    const edgeMod = 0.98 + Math.abs(hitOffset) * 0.06;
+                    const speed = targetSpd * edgeMod;
                     ball.vx = Math.sin(bounceAngle) * speed;
                     ball.vy = Math.cos(bounceAngle) * speed;
                     comboCount = 0;
@@ -1908,7 +2106,7 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
                   ball.y + ball.radius >= SAFETY_WALL_Y - 0.35
                 ) {
                   ball.y = SAFETY_WALL_Y + ball.radius + 0.15;
-                  ball.vy = Math.abs(ball.vy) * 1.05;
+                  ball.vy = Math.abs(ball.vy);
                   safetyWallTimeLeft = 0;
                   safetyWallObj.group.visible = false;
                   soundEngine.playSafetyWallSave();
@@ -1939,28 +2137,26 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
                     ball.x = ob.x + nx * (minDist + 0.03);
                     ball.y = ob.y + ny * (minDist + 0.03);
 
-                    const currentSpd = Math.hypot(ball.vx, ball.vy);
-
                     if (ob.kind === 'bumper') {
-                      const boostedSpd = Math.min(targetSpd * 1.38, currentSpd * 1.15);
-                      ball.vx = nx * boostedSpd;
-                      ball.vy = ny * boostedSpd;
-                      if (Math.abs(ball.vy) < 3.0) {
-                        ball.vy = Math.sign(ball.vy || 1) * 4.5;
+                      const bumperSpd = targetSpd * 1.05;
+                      ball.vx = nx * bumperSpd;
+                      ball.vy = ny * bumperSpd;
+                      if (Math.abs(ball.vy) < 2.2) {
+                        ball.vy = Math.sign(ball.vy || 1) * 2.8;
                       }
                       spawnCrystalExplosion(ob.x, ob.y, 7, 0xff1688, false);
                     } else if (ob.kind === 'prism') {
                       const curAngle = Math.atan2(ball.vx, ball.vy);
                       const deflect = (Math.random() < 0.5 ? -1 : 1) * (0.65 + Math.random() * 0.35);
                       const nextAngle = curAngle + deflect;
-                      ball.vx = Math.sin(nextAngle) * currentSpd;
-                      ball.vy = Math.cos(nextAngle) * currentSpd;
-                      if (Math.abs(ball.vy) < 3.5) {
-                        ball.vy = Math.sign(ball.vy || 1) * 4.5;
+                      ball.vx = Math.sin(nextAngle) * targetSpd;
+                      ball.vy = Math.cos(nextAngle) * targetSpd;
+                      if (Math.abs(ball.vy) < 2.2) {
+                        ball.vy = Math.sign(ball.vy || 1) * 2.8;
                       }
                       spawnCrystalExplosion(ob.x, ob.y, 6, 0xffe066, false);
                     } else {
-                      const vortexSpd = Math.min(targetSpd * 1.4, currentSpd * 1.2);
+                      const vortexSpd = targetSpd * 1.08;
                       const upAngle = (Math.random() - 0.5) * 0.85;
                       ball.vx = Math.sin(upAngle) * vortexSpd;
                       ball.vy = Math.abs(Math.cos(upAngle) * vortexSpd);
@@ -1995,11 +2191,10 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
                       ball.y += ball.y < br.y ? -overlapY : overlapY;
                     }
 
-                    // Subtle organic speed modulation on brick impact so speed is never monotonous
-                    const jitter = 0.98 + Math.random() * 0.05;
+                    // Keep ball speed regulated to targetSpd without runaway acceleration
                     const curS = Math.hypot(ball.vx, ball.vy);
-                    const nextS = THREE.MathUtils.clamp(curS * jitter, targetSpd * 0.86, targetSpd * 1.35);
                     if (curS > 0.01) {
+                      const nextS = THREE.MathUtils.lerp(curS, targetSpd, 0.45);
                       ball.vx = (ball.vx / curS) * nextS;
                       ball.vy = (ball.vy / curS) * nextS;
                     }
@@ -2058,13 +2253,23 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
 
             if (ball.active) {
               ball.visual.orbGroup.position.set(ball.x, ball.y, 0.15);
-              ball.visual.orbGroup.rotation.z += dt * 6;
-
-              const hist = ball.visual.history;
-              for (let j = hist.length - 1; j > 0; j--) {
-                hist[j].lerp(hist[j - 1], 0.58);
+              ball.visual.orbGroup.rotation.z += dt * 4.5;
+              if (!ball.stuckToPaddle) {
+                const hist = ball.visual.history;
+                for (let j = hist.length - 1; j > 0; j--) {
+                  hist[j].lerp(hist[j - 1], 0.88);
+                }
+                hist[0].set(ball.x, ball.y, 0.148);
+                // Emit continuous sparkling colorful stardust along the ball's 4x trail wake
+                spawnWakeDust(
+                  ball.x - ball.vx * 0.012,
+                  ball.y - ball.vy * 0.012,
+                  -ball.vx * 0.08,
+                  -ball.vy * 0.08,
+                  0.16,
+                  0.62
+                );
               }
-              hist[0].set(ball.x, ball.y, 0.1);
               updateOrbTrailGeometry(ball.visual);
             }
           }
@@ -2210,8 +2415,10 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
         if (!br.alive) continue;
 
         if (br.isRival) {
-          br.bundle.rivalRing.rotation.z = elapsed * 2.5;
-          br.bundle.rivalRing.scale.setScalar(1 + Math.sin(elapsed * 8) * 0.08);
+          br.bundle.rivalRing.rotation.z = 0;
+          br.bundle.rivalRing.scale.setScalar(1 + Math.sin(elapsed * 8) * 0.04);
+          (br.bundle.rivalRing.material as THREE.MeshBasicMaterial).opacity =
+            0.7 + Math.sin(elapsed * 10) * 0.25;
         }
 
         if (br.hitFlashTimer > 0) {
@@ -2259,6 +2466,26 @@ export const GameCanvas3D: React.FC<GameCanvas3DProps> = ({
       }
       shardInstanced.instanceMatrix.needsUpdate = true;
       if (shardInstanced.instanceColor) shardInstanced.instanceColor.needsUpdate = true;
+
+      // Animate Sparkling Colorful Wake Stardust ("poussière traînée")
+      const wPosAttr = wakeDustGeo.getAttribute('position') as THREE.BufferAttribute;
+      const wColAttr = wakeDustGeo.getAttribute('color') as THREE.BufferAttribute;
+      for (let i = 0; i < MAX_WAKE_DUST; i++) {
+        const m = wakeDustPool[i];
+        if (m.life > 0) {
+          m.life -= dt;
+          m.x += m.vx * dt;
+          m.y += m.vy * dt;
+          const fade = Math.pow(Math.max(0, m.life / m.maxLife), 1.35);
+          wPosAttr.setXYZ(i, m.x, m.y, m.z);
+          wColAttr.setXYZ(i, m.baseR * fade, m.baseG * fade, m.baseB * fade);
+        } else {
+          wPosAttr.setXYZ(i, 0, -99, 0);
+          wColAttr.setXYZ(i, 0, 0, 0);
+        }
+      }
+      wPosAttr.needsUpdate = true;
+      wColAttr.needsUpdate = true;
 
       hudSyncAccumulator += dt;
       if (hudSyncAccumulator >= 0.12) {

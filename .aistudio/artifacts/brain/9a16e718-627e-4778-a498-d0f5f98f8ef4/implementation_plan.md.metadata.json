@@ -1,6 +1,6 @@
 {
-  "summary":  "Plan d'implémentation pour la sauvegarde automatique instantanée du brouillon de niveau, le mode Test Libre avant publication, le budget global strict de PV et de blocs, le barème de score réaliste resserré, le système de Clashs & Palmarès d'utilisateurs battus, et le nouveau QG Profil Utilisateur complet.",
-  "updatedAt":  "2026-10-29T10:50:41.895008428Z",
+  "summary":  "Plan d'implémentation pour garantir la présence permanente d'au moins une balle en jeu (garde-fou anti-partie sans balle) et ajouter un système de voyageurs cosmiques aléatoires (soucoupe volante, fusée, étoile filante, OVNI, satellite, comète) avec exclusion mutuelle stricte (un seul visible à la fois).",
+  "updatedAt":  "2026-10-29T20:27:15.202585576Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

@@ -15,16 +15,16 @@ import {
  * - Max 420 global HP budget (a 50 HP brick costs 50, a Metal brick costs 45 tactical points)
  */
 export const RIVAL_EDITOR_LIMITS = {
-  maxTotalBricks: 16,
-  minTotalBricks: 5,
-  maxHpBudget: 420,
+  maxTotalBricks: 34,
+  minTotalBricks: 12,
+  maxHpBudget: 880,
   metalBrickBudgetCost: 45,
-  maxMetalBricks: 3,
-  maxLightningBricks: 2,
+  maxMetalBricks: 4,
+  maxLightningBricks: 3,
   maxFixedObstacles: 3,
   maxRandomObstacles: 3,
   minBallSpeed: 9.8,
-  maxBallSpeed: 13.8,
+  maxBallSpeed: 13.5,
   editCooldownDays: 30,
 };
 
@@ -32,15 +32,15 @@ export const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const FIXED_OBSTACLE_PRESETS: FixedObstacleBlueprint[][] = [
   [],
-  [{ x: 0, y: -1.85, kind: 'bumper' }],
+  [{ x: 0, y: -2.05, kind: 'bumper' }],
   [
-    { x: -2.2, y: -1.75, kind: 'prism' },
-    { x: 2.2, y: -1.75, kind: 'prism' },
+    { x: -2.2, y: -2.0, kind: 'prism' },
+    { x: 2.2, y: -2.0, kind: 'prism' },
   ],
   [
-    { x: -2.5, y: -1.6, kind: 'bumper' },
-    { x: 0, y: -2.2, kind: 'vortex' },
-    { x: 2.5, y: -1.6, kind: 'bumper' },
+    { x: -2.5, y: -1.95, kind: 'bumper' },
+    { x: 0, y: -2.25, kind: 'vortex' },
+    { x: 2.5, y: -1.95, kind: 'bumper' },
   ],
 ];
 
@@ -56,7 +56,7 @@ export const TITLE_BADGE_OPTIONS = [
 ];
 
 /**
- * Computes the HP budget consumed by a set of bricks (out of RIVAL_EDITOR_LIMITS.maxHpBudget = 420).
+ * Computes the HP budget consumed by a set of mini-bricks (out of RIVAL_EDITOR_LIMITS.maxHpBudget = 880).
  */
 export function calculateBricksHpBudget(bricks: BrickBlueprint[]): number {
   return bricks.reduce((acc, b) => {
@@ -91,12 +91,12 @@ export function calculateLevelComplexity(params: {
     }
   });
 
-  const hpScore = Math.min(46, destructibleHpSum / 9.2);
-  const metalScore = metalCount * 6.5;
+  const hpScore = Math.min(48, destructibleHpSum / 18.5);
+  const metalScore = metalCount * 5.5;
   const fixedObsScore = params.fixedObstacles.length * 6.5;
   const randomObsScore = params.randomObstacleCount * 9.5;
   const speedScore = Math.max(0, (params.ballSpeed - 9.5) * 6.5);
-  const helperDiscount = lightningCount * 2.5;
+  const helperDiscount = lightningCount * 2.0;
 
   const raw = hpScore + metalScore + fixedObsScore + randomObsScore + speedScore - helperDiscount;
   return Math.round(Math.max(5, Math.min(100, raw)));
@@ -113,14 +113,44 @@ export function getComplexityLabel(score: number): {
 }
 
 export function gridSlotToWorld(row: number, col: number): { x: number; y: number } {
-  const spacingX = 1.82;
-  const startX = -((6 - 1) * spacingX) / 2;
-  const startY = 4.55;
-  const spacingY = 1.22;
+  const spacingX = 1.28;
+  const startX = -((8 - 1) * spacingX) / 2;
+  const startY = 5.05;
+  const spacingY = 0.76;
   return {
     x: Number((startX + col * spacingX).toFixed(2)),
     y: Number((startY - row * spacingY).toFixed(2)),
   };
+}
+
+function makeMiniRivalBricks(
+  rows: Array<
+    Array<{
+      col: number;
+      type: BrickBlueprint['type'];
+      color: BrickBlueprint['color'];
+      hp: number;
+    }>
+  >
+): BrickBlueprint[] {
+  const result: BrickBlueprint[] = [];
+  rows.forEach((rItems, rowIdx) => {
+    rItems.forEach((item) => {
+      const pos = gridSlotToWorld(rowIdx, item.col);
+      result.push({
+        row: rowIdx,
+        col: item.col,
+        x: pos.x,
+        y: pos.y,
+        width: 1.16,
+        height: 0.64,
+        type: item.type,
+        color: item.color,
+        hp: item.hp,
+      });
+    });
+  });
+  return result;
 }
 
 // ============================================================================
@@ -142,7 +172,7 @@ export function getUserProfile(): UserProfileData {
     avatarBadge: '👑',
     titleBadge: 'Architecte Néon',
     joinedAt: Date.now() - 86400000 * 5,
-    totalBricksBroken: 84,
+    totalBricksBroken: 142,
     totalGamesPlayed: 6,
   };
   localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(initial));
@@ -163,19 +193,47 @@ export function incrementProfileStats(bricksBrokenDelta: number, gamesDelta: num
 // ============================================================================
 // 2. INSTANT AUTO-SAVED DRAFT STORAGE (Saved even 2 seconds after creation!)
 // ============================================================================
-const RIVAL_DRAFT_KEY = 'neon_breaker_rival_draft_v2';
+const RIVAL_DRAFT_KEY = 'neon_breaker_rival_draft_v3';
 
 export function getDefaultDraftBricks(): BrickBlueprint[] {
-  return [
-    { row: 0, col: 1, ...gridSlotToWorld(0, 1), width: 1.68, height: 1.08, type: 'numbered', color: 'pink', hp: 40 },
-    { row: 0, col: 2, ...gridSlotToWorld(0, 2), width: 1.68, height: 1.08, type: 'kawaii_happy', color: 'yellow', hp: 30 },
-    { row: 0, col: 3, ...gridSlotToWorld(0, 3), width: 1.68, height: 1.08, type: 'kawaii_wink', color: 'pink', hp: 30 },
-    { row: 0, col: 4, ...gridSlotToWorld(0, 4), width: 1.68, height: 1.08, type: 'numbered', color: 'pink', hp: 40 },
-    { row: 1, col: 1, ...gridSlotToWorld(1, 1), width: 1.68, height: 1.08, type: 'numbered', color: 'blue', hp: 20 },
-    { row: 1, col: 2, ...gridSlotToWorld(1, 2), width: 1.68, height: 1.08, type: 'lightning', color: 'lightning', hp: 10 },
-    { row: 1, col: 3, ...gridSlotToWorld(1, 3), width: 1.68, height: 1.08, type: 'numbered', color: 'purple', hp: 30 },
-    { row: 1, col: 4, ...gridSlotToWorld(1, 4), width: 1.68, height: 1.08, type: 'numbered', color: 'green', hp: 20 },
-  ];
+  return makeMiniRivalBricks([
+    [
+      { col: 1, type: 'numbered', color: 'pink', hp: 40 },
+      { col: 2, type: 'numbered', color: 'purple', hp: 30 },
+      { col: 3, type: 'kawaii_happy', color: 'yellow', hp: 30 },
+      { col: 4, type: 'kawaii_wink', color: 'pink', hp: 30 },
+      { col: 5, type: 'numbered', color: 'purple', hp: 30 },
+      { col: 6, type: 'numbered', color: 'pink', hp: 40 },
+    ],
+    [
+      { col: 0, type: 'numbered', color: 'blue', hp: 20 },
+      { col: 1, type: 'numbered', color: 'green', hp: 20 },
+      { col: 2, type: 'lightning', color: 'lightning', hp: 10 },
+      { col: 5, type: 'lightning', color: 'lightning', hp: 10 },
+      { col: 6, type: 'numbered', color: 'green', hp: 20 },
+      { col: 7, type: 'numbered', color: 'blue', hp: 20 },
+    ],
+    [
+      { col: 1, type: 'numbered', color: 'yellow', hp: 30 },
+      { col: 2, type: 'numbered', color: 'blue', hp: 20 },
+      { col: 3, type: 'numbered', color: 'purple', hp: 30 },
+      { col: 4, type: 'numbered', color: 'purple', hp: 30 },
+      { col: 5, type: 'numbered', color: 'blue', hp: 20 },
+      { col: 6, type: 'numbered', color: 'yellow', hp: 30 },
+    ],
+    [
+      { col: 2, type: 'numbered', color: 'green', hp: 20 },
+      { col: 3, type: 'numbered', color: 'orange', hp: 20 },
+      { col: 4, type: 'numbered', color: 'orange', hp: 20 },
+      { col: 5, type: 'numbered', color: 'green', hp: 20 },
+    ],
+    [
+      { col: 1, type: 'numbered', color: 'blue', hp: 20 },
+      { col: 3, type: 'kawaii_happy', color: 'pink', hp: 20 },
+      { col: 4, type: 'kawaii_wink', color: 'yellow', hp: 20 },
+      { col: 6, type: 'numbered', color: 'blue', hp: 20 },
+    ],
+  ]);
 }
 
 export function getRivalDraftLevel(): RivalDraftLevel {
@@ -244,7 +302,7 @@ export function convertDraftToLevelDefinition(draft: RivalDraftLevel): LevelDefi
 }
 
 // ============================================================================
-// 3. COMMUNITY RIVAL LEVELS & PLAYER PUBLISHED LEVEL
+// 3. COMMUNITY RIVAL LEVELS & PLAYER PUBLISHED LEVEL (5 TO 6 MINI-BRICK ROWS)
 // ============================================================================
 const PRE_SEEDED_RIVAL_LEVELS: RivalCommunityLevel[] = [
   {
@@ -256,22 +314,48 @@ const PRE_SEEDED_RIVAL_LEVELS: RivalCommunityLevel[] = [
     createdAt: Date.now() - 86400000 * 14,
     lastModifiedAt: Date.now() - 86400000 * 14,
     editCount: 0,
-    complexityScore: 24,
+    complexityScore: 26,
     playsCount: 418,
     clearsCount: 289,
     ballSpeed: 10.2,
-    fixedObstacles: [{ x: 0, y: -1.8, kind: 'bumper' }],
+    fixedObstacles: [{ x: 0, y: -2.05, kind: 'bumper' }],
     randomObstacleCount: 0,
-    bricks: [
-      { row: 0, col: 1, ...gridSlotToWorld(0, 1), width: 1.68, height: 1.08, type: 'numbered', color: 'blue', hp: 20 },
-      { row: 0, col: 2, ...gridSlotToWorld(0, 2), width: 1.68, height: 1.08, type: 'kawaii_happy', color: 'yellow', hp: 20 },
-      { row: 0, col: 3, ...gridSlotToWorld(0, 3), width: 1.68, height: 1.08, type: 'kawaii_wink', color: 'pink', hp: 20 },
-      { row: 0, col: 4, ...gridSlotToWorld(0, 4), width: 1.68, height: 1.08, type: 'numbered', color: 'blue', hp: 20 },
-      { row: 1, col: 1, ...gridSlotToWorld(1, 1), width: 1.68, height: 1.08, type: 'numbered', color: 'green', hp: 10 },
-      { row: 1, col: 2, ...gridSlotToWorld(1, 2), width: 1.68, height: 1.08, type: 'lightning', color: 'lightning', hp: 10 },
-      { row: 1, col: 3, ...gridSlotToWorld(1, 3), width: 1.68, height: 1.08, type: 'numbered', color: 'purple', hp: 20 },
-      { row: 1, col: 4, ...gridSlotToWorld(1, 4), width: 1.68, height: 1.08, type: 'numbered', color: 'green', hp: 10 },
-    ],
+    bricks: makeMiniRivalBricks([
+      [
+        { col: 1, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 2, type: 'kawaii_happy', color: 'yellow', hp: 20 },
+        { col: 3, type: 'numbered', color: 'green', hp: 20 },
+        { col: 4, type: 'numbered', color: 'green', hp: 20 },
+        { col: 5, type: 'kawaii_wink', color: 'pink', hp: 20 },
+        { col: 6, type: 'numbered', color: 'blue', hp: 20 },
+      ],
+      [
+        { col: 0, type: 'numbered', color: 'purple', hp: 20 },
+        { col: 2, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 3, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 4, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 5, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 7, type: 'numbered', color: 'purple', hp: 20 },
+      ],
+      [
+        { col: 1, type: 'numbered', color: 'green', hp: 20 },
+        { col: 2, type: 'numbered', color: 'yellow', hp: 20 },
+        { col: 5, type: 'numbered', color: 'yellow', hp: 20 },
+        { col: 6, type: 'numbered', color: 'green', hp: 20 },
+      ],
+      [
+        { col: 1, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 3, type: 'numbered', color: 'pink', hp: 20 },
+        { col: 4, type: 'numbered', color: 'pink', hp: 20 },
+        { col: 6, type: 'numbered', color: 'blue', hp: 20 },
+      ],
+      [
+        { col: 2, type: 'numbered', color: 'green', hp: 10 },
+        { col: 3, type: 'numbered', color: 'yellow', hp: 10 },
+        { col: 4, type: 'numbered', color: 'yellow', hp: 10 },
+        { col: 5, type: 'numbered', color: 'green', hp: 10 },
+      ],
+    ]),
   },
   {
     id: 'rival-seed-2',
@@ -282,27 +366,53 @@ const PRE_SEEDED_RIVAL_LEVELS: RivalCommunityLevel[] = [
     createdAt: Date.now() - 86400000 * 11,
     lastModifiedAt: Date.now() - 86400000 * 11,
     editCount: 1,
-    complexityScore: 48,
+    complexityScore: 49,
     playsCount: 612,
     clearsCount: 244,
     ballSpeed: 11.2,
     fixedObstacles: [
-      { x: -2.2, y: -1.6, kind: 'prism' },
-      { x: 2.2, y: -1.6, kind: 'prism' },
+      { x: -2.2, y: -2.0, kind: 'prism' },
+      { x: 2.2, y: -2.0, kind: 'prism' },
     ],
     randomObstacleCount: 1,
-    bricks: [
-      { row: 0, col: 0, ...gridSlotToWorld(0, 0), width: 1.68, height: 1.08, type: 'numbered', color: 'purple', hp: 30 },
-      { row: 0, col: 1, ...gridSlotToWorld(0, 1), width: 1.68, height: 1.08, type: 'numbered', color: 'pink', hp: 30 },
-      { row: 0, col: 4, ...gridSlotToWorld(0, 4), width: 1.68, height: 1.08, type: 'numbered', color: 'pink', hp: 30 },
-      { row: 0, col: 5, ...gridSlotToWorld(0, 5), width: 1.68, height: 1.08, type: 'numbered', color: 'purple', hp: 30 },
-      { row: 1, col: 1, ...gridSlotToWorld(1, 1), width: 1.68, height: 1.08, type: 'kawaii_happy', color: 'yellow', hp: 30 },
-      { row: 1, col: 2, ...gridSlotToWorld(1, 2), width: 1.68, height: 1.08, type: 'numbered', color: 'blue', hp: 40 },
-      { row: 1, col: 3, ...gridSlotToWorld(1, 3), width: 1.68, height: 1.08, type: 'numbered', color: 'blue', hp: 40 },
-      { row: 1, col: 4, ...gridSlotToWorld(1, 4), width: 1.68, height: 1.08, type: 'kawaii_wink', color: 'yellow', hp: 30 },
-      { row: 2, col: 2, ...gridSlotToWorld(2, 2), width: 1.68, height: 1.08, type: 'metal', color: 'metal', hp: 999 },
-      { row: 2, col: 3, ...gridSlotToWorld(2, 3), width: 1.68, height: 1.08, type: 'metal', color: 'metal', hp: 999 },
-    ],
+    bricks: makeMiniRivalBricks([
+      [
+        { col: 0, type: 'numbered', color: 'purple', hp: 30 },
+        { col: 1, type: 'numbered', color: 'pink', hp: 30 },
+        { col: 2, type: 'numbered', color: 'blue', hp: 30 },
+        { col: 5, type: 'numbered', color: 'blue', hp: 30 },
+        { col: 6, type: 'numbered', color: 'pink', hp: 30 },
+        { col: 7, type: 'numbered', color: 'purple', hp: 30 },
+      ],
+      [
+        { col: 1, type: 'kawaii_happy', color: 'yellow', hp: 30 },
+        { col: 2, type: 'numbered', color: 'green', hp: 30 },
+        { col: 3, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 4, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 5, type: 'numbered', color: 'green', hp: 30 },
+        { col: 6, type: 'kawaii_wink', color: 'yellow', hp: 30 },
+      ],
+      [
+        { col: 0, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 2, type: 'metal', color: 'metal', hp: 999 },
+        { col: 3, type: 'numbered', color: 'pink', hp: 30 },
+        { col: 4, type: 'numbered', color: 'pink', hp: 30 },
+        { col: 5, type: 'metal', color: 'metal', hp: 999 },
+        { col: 7, type: 'numbered', color: 'blue', hp: 20 },
+      ],
+      [
+        { col: 1, type: 'numbered', color: 'purple', hp: 30 },
+        { col: 3, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 4, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 6, type: 'numbered', color: 'purple', hp: 30 },
+      ],
+      [
+        { col: 2, type: 'numbered', color: 'green', hp: 20 },
+        { col: 3, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 4, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 5, type: 'numbered', color: 'green', hp: 20 },
+      ],
+    ]),
   },
   {
     id: 'rival-seed-3',
@@ -313,26 +423,52 @@ const PRE_SEEDED_RIVAL_LEVELS: RivalCommunityLevel[] = [
     createdAt: Date.now() - 86400000 * 8,
     lastModifiedAt: Date.now() - 86400000 * 8,
     editCount: 1,
-    complexityScore: 69,
+    complexityScore: 71,
     playsCount: 845,
     clearsCount: 198,
     ballSpeed: 12.1,
-    fixedObstacles: [{ x: 0, y: -1.4, kind: 'vortex' }],
+    fixedObstacles: [{ x: 0, y: -2.0, kind: 'vortex' }],
     randomObstacleCount: 2,
-    bricks: [
-      { row: 0, col: 0, ...gridSlotToWorld(0, 0), width: 1.68, height: 1.08, type: 'numbered', color: 'pink', hp: 50 },
-      { row: 0, col: 1, ...gridSlotToWorld(0, 1), width: 1.68, height: 1.08, type: 'numbered', color: 'orange', hp: 30 },
-      { row: 0, col: 2, ...gridSlotToWorld(0, 2), width: 1.68, height: 1.08, type: 'lightning', color: 'lightning', hp: 10 },
-      { row: 0, col: 3, ...gridSlotToWorld(0, 3), width: 1.68, height: 1.08, type: 'numbered', color: 'purple', hp: 40 },
-      { row: 0, col: 4, ...gridSlotToWorld(0, 4), width: 1.68, height: 1.08, type: 'numbered', color: 'orange', hp: 30 },
-      { row: 0, col: 5, ...gridSlotToWorld(0, 5), width: 1.68, height: 1.08, type: 'numbered', color: 'pink', hp: 50 },
-      { row: 1, col: 0, ...gridSlotToWorld(1, 0), width: 1.68, height: 1.08, type: 'metal', color: 'metal', hp: 999 },
-      { row: 1, col: 1, ...gridSlotToWorld(1, 1), width: 1.68, height: 1.08, type: 'kawaii_happy', color: 'pink', hp: 30 },
-      { row: 1, col: 2, ...gridSlotToWorld(1, 2), width: 1.68, height: 1.08, type: 'numbered', color: 'green', hp: 30 },
-      { row: 1, col: 3, ...gridSlotToWorld(1, 3), width: 1.68, height: 1.08, type: 'numbered', color: 'green', hp: 30 },
-      { row: 1, col: 4, ...gridSlotToWorld(1, 4), width: 1.68, height: 1.08, type: 'kawaii_wink', color: 'yellow', hp: 30 },
-      { row: 1, col: 5, ...gridSlotToWorld(1, 5), width: 1.68, height: 1.08, type: 'metal', color: 'metal', hp: 999 },
-    ],
+    bricks: makeMiniRivalBricks([
+      [
+        { col: 0, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 1, type: 'numbered', color: 'purple', hp: 40 },
+        { col: 2, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 3, type: 'numbered', color: 'yellow', hp: 30 },
+        { col: 4, type: 'numbered', color: 'yellow', hp: 30 },
+        { col: 5, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 6, type: 'numbered', color: 'purple', hp: 40 },
+        { col: 7, type: 'numbered', color: 'pink', hp: 50 },
+      ],
+      [
+        { col: 0, type: 'metal', color: 'metal', hp: 999 },
+        { col: 1, type: 'kawaii_happy', color: 'pink', hp: 30 },
+        { col: 2, type: 'numbered', color: 'green', hp: 30 },
+        { col: 5, type: 'numbered', color: 'green', hp: 30 },
+        { col: 6, type: 'kawaii_wink', color: 'yellow', hp: 30 },
+        { col: 7, type: 'metal', color: 'metal', hp: 999 },
+      ],
+      [
+        { col: 1, type: 'numbered', color: 'blue', hp: 30 },
+        { col: 2, type: 'numbered', color: 'orange', hp: 30 },
+        { col: 3, type: 'numbered', color: 'pink', hp: 40 },
+        { col: 4, type: 'numbered', color: 'pink', hp: 40 },
+        { col: 5, type: 'numbered', color: 'orange', hp: 30 },
+        { col: 6, type: 'numbered', color: 'blue', hp: 30 },
+      ],
+      [
+        { col: 2, type: 'numbered', color: 'purple', hp: 30 },
+        { col: 3, type: 'numbered', color: 'green', hp: 20 },
+        { col: 4, type: 'numbered', color: 'green', hp: 20 },
+        { col: 5, type: 'numbered', color: 'purple', hp: 30 },
+      ],
+      [
+        { col: 1, type: 'numbered', color: 'yellow', hp: 20 },
+        { col: 3, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 4, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 6, type: 'numbered', color: 'yellow', hp: 20 },
+      ],
+    ]),
   },
   {
     id: 'rival-seed-4',
@@ -343,30 +479,62 @@ const PRE_SEEDED_RIVAL_LEVELS: RivalCommunityLevel[] = [
     createdAt: Date.now() - 86400000 * 4,
     lastModifiedAt: Date.now() - 86400000 * 4,
     editCount: 0,
-    complexityScore: 91,
+    complexityScore: 92,
     playsCount: 1290,
     clearsCount: 84,
-    ballSpeed: 13.2,
+    ballSpeed: 13.1,
     fixedObstacles: [
-      { x: -2.6, y: -1.5, kind: 'bumper' },
-      { x: 0, y: -2.2, kind: 'prism' },
-      { x: 2.6, y: -1.5, kind: 'bumper' },
+      { x: -2.6, y: -1.95, kind: 'bumper' },
+      { x: 0, y: -2.25, kind: 'prism' },
+      { x: 2.6, y: -1.95, kind: 'bumper' },
     ],
     randomObstacleCount: 3,
-    bricks: [
-      { row: 0, col: 0, ...gridSlotToWorld(0, 0), width: 1.68, height: 1.08, type: 'numbered', color: 'pink', hp: 50 },
-      { row: 0, col: 1, ...gridSlotToWorld(0, 1), width: 1.68, height: 1.08, type: 'numbered', color: 'purple', hp: 40 },
-      { row: 0, col: 2, ...gridSlotToWorld(0, 2), width: 1.68, height: 1.08, type: 'numbered', color: 'yellow', hp: 30 },
-      { row: 0, col: 3, ...gridSlotToWorld(0, 3), width: 1.68, height: 1.08, type: 'numbered', color: 'yellow', hp: 30 },
-      { row: 0, col: 4, ...gridSlotToWorld(0, 4), width: 1.68, height: 1.08, type: 'numbered', color: 'purple', hp: 40 },
-      { row: 0, col: 5, ...gridSlotToWorld(0, 5), width: 1.68, height: 1.08, type: 'numbered', color: 'pink', hp: 50 },
-      { row: 1, col: 1, ...gridSlotToWorld(1, 1), width: 1.68, height: 1.08, type: 'metal', color: 'metal', hp: 999 },
-      { row: 1, col: 2, ...gridSlotToWorld(1, 2), width: 1.68, height: 1.08, type: 'kawaii_happy', color: 'pink', hp: 30 },
-      { row: 1, col: 3, ...gridSlotToWorld(1, 3), width: 1.68, height: 1.08, type: 'kawaii_wink', color: 'yellow', hp: 30 },
-      { row: 1, col: 4, ...gridSlotToWorld(1, 4), width: 1.68, height: 1.08, type: 'metal', color: 'metal', hp: 999 },
-      { row: 2, col: 1, ...gridSlotToWorld(2, 1), width: 1.68, height: 1.08, type: 'numbered', color: 'orange', hp: 20 },
-      { row: 2, col: 4, ...gridSlotToWorld(2, 4), width: 1.68, height: 1.08, type: 'numbered', color: 'orange', hp: 20 },
-    ],
+    bricks: makeMiniRivalBricks([
+      [
+        { col: 0, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 1, type: 'numbered', color: 'purple', hp: 40 },
+        { col: 2, type: 'numbered', color: 'yellow', hp: 40 },
+        { col: 3, type: 'kawaii_happy', color: 'pink', hp: 40 },
+        { col: 4, type: 'kawaii_wink', color: 'yellow', hp: 40 },
+        { col: 5, type: 'numbered', color: 'yellow', hp: 40 },
+        { col: 6, type: 'numbered', color: 'purple', hp: 40 },
+        { col: 7, type: 'numbered', color: 'pink', hp: 50 },
+      ],
+      [
+        { col: 1, type: 'metal', color: 'metal', hp: 999 },
+        { col: 2, type: 'numbered', color: 'blue', hp: 40 },
+        { col: 3, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 4, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 5, type: 'numbered', color: 'blue', hp: 40 },
+        { col: 6, type: 'metal', color: 'metal', hp: 999 },
+      ],
+      [
+        { col: 0, type: 'numbered', color: 'green', hp: 30 },
+        { col: 2, type: 'numbered', color: 'pink', hp: 40 },
+        { col: 3, type: 'numbered', color: 'purple', hp: 30 },
+        { col: 4, type: 'numbered', color: 'purple', hp: 30 },
+        { col: 5, type: 'numbered', color: 'pink', hp: 40 },
+        { col: 7, type: 'numbered', color: 'green', hp: 30 },
+      ],
+      [
+        { col: 1, type: 'numbered', color: 'orange', hp: 30 },
+        { col: 2, type: 'numbered', color: 'yellow', hp: 30 },
+        { col: 5, type: 'numbered', color: 'yellow', hp: 30 },
+        { col: 6, type: 'numbered', color: 'orange', hp: 30 },
+      ],
+      [
+        { col: 2, type: 'numbered', color: 'blue', hp: 30 },
+        { col: 3, type: 'numbered', color: 'green', hp: 30 },
+        { col: 4, type: 'numbered', color: 'green', hp: 30 },
+        { col: 5, type: 'numbered', color: 'blue', hp: 30 },
+      ],
+      [
+        { col: 1, type: 'numbered', color: 'purple', hp: 20 },
+        { col: 3, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 4, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 6, type: 'numbered', color: 'purple', hp: 20 },
+      ],
+    ]),
   },
 ];
 

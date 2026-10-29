@@ -4,13 +4,16 @@ import {
   RotateCcw,
   FastForward,
   Trophy,
-  Sparkles,
   X,
   Flame,
   Crown,
   Swords,
   Wrench,
   User,
+  Grid,
+  Volume2,
+  VolumeX,
+  Users,
 } from 'lucide-react';
 import { CAMPAIGN_LEVELS } from '../game/levels';
 import { GameHudSnapshot, GameModeState } from '../game/types';
@@ -18,6 +21,8 @@ import { GameHudSnapshot, GameModeState } from '../game/types';
 interface GameModalsProps {
   gameState: GameModeState;
   hud: GameHudSnapshot;
+  isMuted: boolean;
+  onToggleMute: () => void;
   onStartLevel7Capture: () => void;
   onStartCampaignLevel: (levelId: number, resetScore?: boolean) => void;
   onResume: () => void;
@@ -31,6 +36,8 @@ interface GameModalsProps {
 export const GameModals: React.FC<GameModalsProps> = ({
   gameState,
   hud,
+  isMuted,
+  onToggleMute,
   onStartLevel7Capture,
   onStartCampaignLevel,
   onResume,
@@ -55,6 +62,10 @@ export const GameModals: React.FC<GameModalsProps> = ({
     .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
   const formattedHigh = (hud.playMode === 'rival' ? hud.rivalHighScore : hud.highScore)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+  const formattedRivalScore = hud.socialRival.targetScore
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
@@ -109,7 +120,7 @@ export const GameModals: React.FC<GameModalsProps> = ({
           </svg>
 
           <p className="mt-2 text-xs sm:text-sm text-[#CBD5E1] max-w-md text-balance">
-            Modes Classic & Clashs Rival communautaires · QG Profil, Studio auto-sauvegardé & Hall of Fame.
+            Mini-briques haute densité · 12 Mondes Cosmiques 3D Ultra HD · Modes Classic & Clashs Rival.
           </p>
         </div>
 
@@ -162,10 +173,10 @@ export const GameModals: React.FC<GameModalsProps> = ({
           <div className="flex items-center justify-between gap-2 mb-3">
             <div>
               <h2 className="font-display font-black text-lg sm:text-2xl text-white">
-                MODE CLASSIC · 12 NIVEAUX UNIQUES
+                MODE CLASSIC · 12 MONDES COSMIQUES 3D
               </h2>
               <p className="text-[11px] text-[#94A3B8]">
-                Vitesses distinctes · Obstacles fixes + aléatoires (10–20s) · Score serré & réaliste
+                6 à 8 rangées de mini-briques par niveau · Décors 3D évolutifs · Parties de 2 à 3 minutes
               </p>
             </div>
             <button
@@ -199,7 +210,7 @@ export const GameModals: React.FC<GameModalsProps> = ({
                       {lvl.name}
                     </span>
                     <span className="text-[10px] font-semibold text-[#7DD3FC]">
-                      {lvl.fixedObstacles.length}F+{lvl.randomObstacleCount}A
+                      {lvl.bricks.length} blocs
                     </span>
                   </div>
                   <p className="mt-0.5 text-[10px] text-[#CBD5E1] truncate">
@@ -240,23 +251,42 @@ export const GameModals: React.FC<GameModalsProps> = ({
     );
   }
 
-  // 3. Pause, Victory & Game Over Modal (Supports Classic, Rival Clash Victory, and Draft Test Mode)
+  // 3. Pause Command Hub, Victory & Game Over Modal
   const isVictory = gameState === 'victory';
   const isGameOver = gameState === 'gameover';
   const nextLevelId = hud.level < 12 ? hud.level + 1 : 1;
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center p-3.5 bg-[#07051A]/90 pointer-events-auto overflow-hidden">
-      <div className="w-full max-w-md rounded-3xl border-2 border-[#7C3AED] bg-[#110A2E] p-5 sm:p-6 text-center shadow-[0_0_40px_rgba(124,58,237,0.55)]">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-[10px] font-extrabold text-[#7DD3FC] uppercase mb-1">
-          {hud.playMode === 'draft_test'
-            ? 'Mode Test Brouillon (Avant Publication)'
-            : hud.playMode === 'rival'
-            ? 'Clash Mode Rival Communautaire'
-            : 'Mode Classic'}
+    <div className="fixed inset-0 z-30 flex items-center justify-center p-3 bg-[#07051A]/92 pointer-events-auto overflow-hidden">
+      <div className="w-full max-w-md rounded-3xl border-2 border-[#7C3AED] bg-[#110A2E] p-4 sm:p-5 text-center shadow-[0_0_45px_rgba(124,58,237,0.55)]">
+        <div className="flex items-center justify-between mb-1">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-[10px] font-extrabold text-[#7DD3FC] uppercase">
+            {hud.playMode === 'draft_test'
+              ? 'Mode Test Brouillon'
+              : hud.playMode === 'rival'
+              ? 'Mode Rival Communautaire'
+              : 'Mode Classic'}
+          </span>
+
+          <button
+            onClick={onToggleMute}
+            className="px-2.5 py-1 rounded-full border border-[#38BDF8]/40 bg-[#18103E] hover:bg-[#221756] text-[11px] font-bold text-[#BAE6FD] flex items-center gap-1.5 cursor-pointer"
+          >
+            {isMuted ? (
+              <>
+                <VolumeX className="w-3.5 h-3.5 text-[#FF2A85]" />
+                <span>Son Coupé</span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-[#00F0FF]" />
+                <span>Son Actif</span>
+              </>
+            )}
+          </button>
         </div>
 
-        <h2 className="font-display font-black text-2xl sm:text-3xl text-white tracking-tight neon-score-glow">
+        <h2 className="font-display font-black text-xl sm:text-2xl text-white tracking-tight neon-score-glow">
           {isVictory
             ? hud.playMode === 'rival'
               ? 'CLASH REMPORTÉ !'
@@ -265,156 +295,162 @@ export const GameModals: React.FC<GameModalsProps> = ({
               : 'NIVEAU ACCOMPLI !'
             : isGameOver
             ? '3 VIES PERDUES !'
-            : 'PARTIE EN PAUSE'}
+            : 'MENU PAUSE & QG'}
         </h2>
 
         {/* Contextual Banner */}
         {isVictory && hud.playMode === 'rival' && hud.levelAuthor ? (
-          <div className="mt-2 px-3 py-2 rounded-2xl bg-[#0D2824] border border-[#10E84A]/70 text-xs text-[#A7F3D0]">
+          <div className="mt-1.5 px-3 py-2 rounded-2xl bg-[#0D2824] border border-[#10E84A]/70 text-xs text-[#A7F3D0]">
             <div className="font-bold text-[#4ADE80] flex items-center justify-center gap-1.5">
               <Swords className="w-4 h-4" />
               <span>Vous avez battu le niveau de {hud.levelAuthor} !</span>
             </div>
-            <p className="mt-0.5 text-[11px] text-[#CBD5E1]">
-              Ce triomphe a été ajouté à votre Palmarès de Clashs dans votre QG Profil.
+            <p className="mt-0.5 text-[10px] text-[#CBD5E1]">
+              Ce triomphe est inscrit dans votre Palmarès de Clashs (Mon QG Profil).
             </p>
           </div>
         ) : isGameOver ? (
-          <div className="mt-2 px-3 py-2 rounded-2xl bg-[#2A0B2E] border border-[#FF1668]/60 text-xs text-[#FFD1E6]">
+          <div className="mt-1.5 px-3 py-2 rounded-2xl bg-[#2A0B2E] border border-[#FF1668]/60 text-xs text-[#FFD1E6]">
             <div className="font-bold text-[#FF4098] flex items-center justify-center gap-1.5">
               <Crown className="w-4 h-4 text-[#FFD700]" />
               <span>
-                Niveau complété à {progressPercent}% — Il ne restait que{' '}
-                {hud.destructibleRemaining} briques !
+                Complété à {progressPercent}% — Il restait {hud.destructibleRemaining} mini-briques !
               </span>
             </div>
-            <p className="mt-0.5 text-[11px] text-[#CBD5E1]">
-              {hud.playMode === 'draft_test'
-                ? 'Ajustez librement vos blocs dans le Studio ou relancez le test.'
-                : 'La Brique Rivale vous nargue ! Relancez avec 3 vies pleines pour prendre votre revanche.'}
-            </p>
           </div>
         ) : (
-          <p className="mt-1 text-xs text-[#CBD5E1]">
-            {isVictory
-              ? hud.playMode === 'draft_test'
-                ? 'Votre niveau est 100% jouable ! Vous pouvez maintenant le publier depuis votre QG.'
-                : `Toutes les briques de ${hud.levelName} ont été pulvérisées ! Série : ${hud.winStreak} 🔥`
-              : `${hud.levelName} · Vies : ${hud.lives}/3 · Bonus rares : ${hud.activeBoosters.capsulesDroppedInMatch}/${hud.activeBoosters.maxCapsulesInMatch}`}
-          </p>
+          <div className="mt-1 flex flex-col items-center gap-0.5 text-[11px] text-[#CBD5E1]">
+            <span>
+              {hud.levelName} · Restantes : <strong>{hud.destructibleRemaining} mini-briques</strong> · Bonus :{' '}
+              <strong>
+                {hud.activeBoosters.capsulesDroppedInMatch}/{hud.activeBoosters.maxCapsulesInMatch}
+              </strong>
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-[#94A3B8]">
+              <Users className="w-3 h-3 text-[#38BDF8]" />
+              Prochain Rival : #{hud.socialRival.rank} {hud.socialRival.name} ({formattedRivalScore} pts)
+            </span>
+          </div>
         )}
 
-        <div className="my-4 py-3 px-3.5 rounded-2xl bg-[#191042] border border-white/10 flex items-center justify-around">
+        {/* Compact Score Summary */}
+        <div className="my-3 py-2.5 px-3 rounded-2xl bg-[#191042] border border-white/10 flex items-center justify-around">
           <div>
             <div className="text-[10px] text-[#94A3B8]">Score Partie</div>
-            <div className="font-display font-black text-lg sm:text-xl text-white tabular-nums">
+            <div className="font-display font-black text-base sm:text-lg text-white tabular-nums">
               {formattedScore} pts
             </div>
           </div>
-          <div className="h-7 w-px bg-white/15" />
+          <div className="h-6 w-px bg-white/15" />
           <div>
             <div className="text-[10px] text-[#94A3B8]">
               Record {hud.playMode === 'rival' ? 'Rival' : 'Classic'}
             </div>
-            <div className="font-display font-black text-lg sm:text-xl text-[#FFD700] tabular-nums">
+            <div className="font-display font-black text-base sm:text-lg text-[#FFD700] tabular-nums">
               {formattedHigh} pts
             </div>
           </div>
-          <div className="h-7 w-px bg-white/15" />
+          <div className="h-6 w-px bg-white/15" />
           <div>
-            <div className="text-[10px] text-[#94A3B8]">Série Victoires</div>
-            <div className="font-display font-black text-lg sm:text-xl text-[#00F0FF] tabular-nums flex items-center justify-center gap-1">
-              <Flame className="w-4 h-4 fill-[#00F0FF]" />
+            <div className="text-[10px] text-[#94A3B8]">Série</div>
+            <div className="font-display font-black text-base sm:text-lg text-[#00F0FF] tabular-nums flex items-center justify-center gap-1">
+              <Flame className="w-3.5 h-3.5 fill-[#00F0FF]" />
               {hud.winStreak}
             </div>
           </div>
         </div>
 
+        {/* Primary Action Buttons */}
         <div className="flex flex-col gap-2">
           {gameState === 'paused' && (
             <button
               onClick={onResume}
-              className="w-full min-h-[46px] py-2.5 px-5 rounded-xl bg-gradient-to-r from-[#00B4FF] to-[#0088FF] hover:brightness-110 text-white font-display font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full min-h-[44px] py-2 px-5 rounded-xl bg-gradient-to-r from-[#00B4FF] to-[#0088FF] hover:brightness-110 text-white font-display font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_18px_rgba(0,180,255,0.45)]"
             >
               <Play className="w-4 h-4 fill-white" />
               <span>Reprendre la Partie</span>
             </button>
           )}
 
-          {hud.playMode === 'draft_test' ? (
-            <>
+          {isVictory && hud.playMode === 'classic' && (
+            <button
+              onClick={() => onStartCampaignLevel(nextLevelId, false)}
+              className="w-full min-h-[44px] py-2 px-5 rounded-xl bg-gradient-to-r from-[#10E84A] to-[#059669] hover:brightness-110 text-white font-display font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <FastForward className="w-4 h-4 fill-white" />
+              <span>Niveau Suivant (Niveau {nextLevelId})</span>
+            </button>
+          )}
+
+          <button
+            onClick={() =>
+              hud.playMode === 'draft_test'
+                ? onOpenRivalEditor()
+                : hud.playMode === 'rival' && isVictory
+                ? onOpenRivalBrowser()
+                : hud.level === 7 && !isGameOver
+                ? onStartLevel7Capture()
+                : onStartCampaignLevel(hud.level, isGameOver)
+            }
+            className="w-full min-h-[42px] py-2 px-4 rounded-xl bg-gradient-to-r from-[#FF1668] to-[#9333EA] hover:brightness-110 text-white font-display font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>
+              {hud.playMode === 'draft_test'
+                ? 'Retourner au Studio Créateur'
+                : hud.playMode === 'rival' && isVictory
+                ? 'Défier un autre Joueur Rival'
+                : isGameOver
+                ? `Prendre ma Revanche (${hud.levelName})`
+                : `Recommencer ${hud.levelName}`}
+            </span>
+          </button>
+
+          {/* All Menus Organised Cleanly Inside Pause! */}
+          <div className="mt-1 pt-2 border-t border-white/10">
+            <div className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider mb-1.5">
+              Navigation & Modes de Jeu
+            </div>
+            <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={onOpenRivalEditor}
-                className="w-full min-h-[46px] py-2.5 px-5 rounded-xl bg-gradient-to-r from-[#FF1668] to-[#9333EA] hover:brightness-110 text-white font-display font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer"
+                onClick={onOpenLevelSelect}
+                className="min-h-[40px] px-3 rounded-xl border border-[#FF1668]/50 bg-[#250D30] hover:bg-[#351244] text-xs font-bold text-white flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Wrench className="w-4 h-4" />
-                <span>Retourner au Studio Créateur (Modifier)</span>
+                <Grid className="w-3.5 h-3.5 text-[#FF4098]" />
+                <span>Mode Classic (1–12)</span>
+              </button>
+
+              <button
+                onClick={onOpenRivalBrowser}
+                className="min-h-[40px] px-3 rounded-xl border border-[#00F0FF]/50 bg-[#0E193D] hover:bg-[#16285E] text-xs font-bold text-[#7DD3FC] flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Swords className="w-3.5 h-3.5 text-[#00F0FF]" />
+                <span>Mode Rival (Clashs)</span>
               </button>
 
               <button
                 onClick={onOpenUserProfile}
-                className="w-full min-h-[44px] py-2.5 px-5 rounded-xl bg-gradient-to-r from-[#10E84A] to-[#059669] hover:brightness-110 text-[#07051A] font-display font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                className="min-h-[40px] px-3 rounded-xl border border-[#A855F7]/60 bg-[#211147] hover:bg-[#2F1863] text-xs font-bold text-[#E9D5FF] flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <User className="w-4 h-4" />
-                <span>Ouvrir Mon QG pour Publier</span>
+                <User className="w-3.5 h-3.5 text-[#C084FC]" />
+                <span>Mon QG Profil</span>
               </button>
-            </>
-          ) : (
-            <>
-              {isVictory && hud.playMode === 'classic' && (
-                <button
-                  onClick={() => onStartCampaignLevel(nextLevelId, false)}
-                  className="w-full min-h-[46px] py-2.5 px-5 rounded-xl bg-gradient-to-r from-[#10E84A] to-[#059669] hover:brightness-110 text-white font-display font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <FastForward className="w-4 h-4 fill-white" />
-                  <span>Niveau Suivant (Niveau {nextLevelId})</span>
-                </button>
-              )}
 
               <button
-                onClick={() =>
-                  hud.playMode === 'rival'
-                    ? onOpenRivalBrowser()
-                    : hud.level === 7 && !isGameOver
-                    ? onStartLevel7Capture()
-                    : onStartCampaignLevel(hud.level, isGameOver)
-                }
-                className="w-full min-h-[46px] py-2.5 px-5 rounded-xl bg-gradient-to-r from-[#FF1668] to-[#9333EA] hover:brightness-110 text-white font-display font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(255,22,104,0.5)]"
+                onClick={onOpenRivalEditor}
+                className="min-h-[40px] px-3 rounded-xl border border-[#10E84A]/50 bg-[#0E2925] hover:bg-[#143B35] text-xs font-bold text-[#4ADE80] flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <RotateCcw className="w-4 h-4" />
-                <span>
-                  {hud.playMode === 'rival'
-                    ? 'Défier un autre Joueur Rival'
-                    : isGameOver
-                    ? `Prendre ma Revanche (${hud.levelName} · 3 Vies)`
-                    : `Recommencer ${hud.levelName} (3 Vies)`}
-                </span>
+                <Wrench className="w-3.5 h-3.5 text-[#10E84A]" />
+                <span>Studio Créateur</span>
               </button>
-            </>
-          )}
-
-          <div className="grid grid-cols-3 gap-2 mt-0.5">
-            <button
-              onClick={onOpenLevelSelect}
-              className="min-h-[42px] px-2 rounded-xl border border-white/20 bg-[#1B1246] hover:bg-[#261A60] text-xs font-bold text-[#CBD5E1] cursor-pointer"
-            >
-              Classic (1–12)
-            </button>
-
-            <button
-              onClick={onOpenUserProfile}
-              className="min-h-[42px] px-2 rounded-xl border border-[#A855F7]/50 bg-[#231248] hover:bg-[#311964] text-xs font-bold text-[#E9D5FF] flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <User className="w-3.5 h-3.5" />
-              <span>Mon QG Profil</span>
-            </button>
+            </div>
 
             <button
               onClick={onOpenHallOfFame}
-              className="min-h-[42px] px-2 rounded-xl border border-[#FFD700]/50 bg-[#261B12] hover:bg-[#382718] text-xs font-bold text-[#FFD700] flex items-center justify-center gap-1 cursor-pointer"
+              className="w-full mt-2 min-h-[40px] px-3 rounded-xl border border-[#FFD700]/55 bg-[#261B12] hover:bg-[#382718] text-xs font-bold text-[#FFD700] flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <Trophy className="w-3.5 h-3.5" />
-              <span>Hall of Fame</span>
+              <Trophy className="w-3.5 h-3.5 text-[#FFD700]" />
+              <span>Hall of Fame (Classements Classic & Rival)</span>
             </button>
           </div>
         </div>

@@ -961,14 +961,14 @@ export const RivalStudioModal: React.FC<RivalStudioModalProps> = ({
       return;
     }
 
-    // 2. Check Global HP Budget (Max 420 PV to prevent spamming 50 HP bricks!)
+    // 2. Check Global HP Budget (Max 880 PV to prevent spamming 50 HP bricks!)
     const candidateBrick: BrickBlueprint = {
       row,
       col,
       x: gridSlotToWorld(row, col).x,
       y: gridSlotToWorld(row, col).y,
-      width: 1.68,
-      height: 1.08,
+      width: 1.16,
+      height: 0.64,
       type: brush.type,
       color: brush.color,
       hp: brush.hp,
@@ -976,7 +976,7 @@ export const RivalStudioModal: React.FC<RivalStudioModalProps> = ({
     const nextBudget = calculateBricksHpBudget([...withoutTarget, candidateBrick]);
     if (nextBudget > RIVAL_EDITOR_LIMITS.maxHpBudget) {
       setEditorStatusMsg(
-        `Budget PV dépassé (${nextBudget}/${RIVAL_EDITOR_LIMITS.maxHpBudget} PV max) ! Utilisez des blocs de 20 ou 30 PV au lieu de ne poser que des blocs de 50.`
+        `Budget PV dépassé (${nextBudget}/${RIVAL_EDITOR_LIMITS.maxHpBudget} PV max) ! Utilisez des mini-briques de 20 ou 30 PV au lieu de ne poser que des 50.`
       );
       return;
     }
@@ -1023,7 +1023,7 @@ export const RivalStudioModal: React.FC<RivalStudioModalProps> = ({
               </span>
             </div>
             <p className="text-[10px] text-[#94A3B8] mt-0.5">
-              Budget strict de {RIVAL_EDITOR_LIMITS.maxHpBudget} PV & {RIVAL_EDITOR_LIMITS.maxTotalBricks} blocs max pour forcer la créativité · Test libre à tout moment
+              Grille 8×6 Mini-Briques · Budget {RIVAL_EDITOR_LIMITS.maxHpBudget} PV & {RIVAL_EDITOR_LIMITS.maxTotalBricks} mini-briques max · Test libre à tout moment
             </p>
           </div>
 
@@ -1102,7 +1102,7 @@ export const RivalStudioModal: React.FC<RivalStudioModalProps> = ({
           </div>
         </div>
 
-        {/* Global HP Budget & Block Count Bars (Prevents spamming 50 HP bricks!) */}
+        {/* Global HP Budget & Block Count Bars */}
         <div className="bg-[#0B061E] px-3 py-1.5 rounded-xl border border-white/10 mb-2">
           <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-[#CBD5E1] mb-1">
             <span>
@@ -1118,7 +1118,7 @@ export const RivalStudioModal: React.FC<RivalStudioModalProps> = ({
               </strong>
             </span>
             <span>
-              Blocs posés :{' '}
+              Mini-Briques :{' '}
               <strong className="text-white">
                 {gridBricks.length} / {RIVAL_EDITOR_LIMITS.maxTotalBricks} max
               </strong>
@@ -1159,12 +1159,12 @@ export const RivalStudioModal: React.FC<RivalStudioModalProps> = ({
           ))}
         </div>
 
-        {/* Interactive 4x6 Arena Matrix */}
+        {/* Interactive 6 Rows x 8 Columns Mini-Brick Matrix (48 cells) */}
         <div className="p-2 rounded-2xl bg-[#08051A] border border-[#6D28D9]/60 mb-2">
-          <div className="grid grid-cols-6 gap-1.5">
-            {Array.from({ length: 24 }).map((_, cellIdx) => {
-              const row = Math.floor(cellIdx / 6);
-              const col = cellIdx % 6;
+          <div className="grid grid-cols-8 gap-1">
+            {Array.from({ length: 48 }).map((_, cellIdx) => {
+              const row = Math.floor(cellIdx / 8);
+              const col = cellIdx % 8;
               const brick = gridBricks.find((b) => b.row === row && b.col === col);
 
               let cellBg = 'bg-[#130D32] border-white/10 text-[#475569]';
@@ -1198,7 +1198,7 @@ export const RivalStudioModal: React.FC<RivalStudioModalProps> = ({
                 <button
                   key={`${row}-${col}`}
                   onClick={() => handleCellClick(row, col)}
-                  className={`h-9 sm:h-10 rounded-xl border font-display font-black text-xs flex items-center justify-center transition-transform active:scale-95 cursor-pointer ${cellBg}`}
+                  className={`h-7 sm:h-8 rounded-lg border font-display font-black text-[10px] sm:text-xs flex items-center justify-center transition-transform active:scale-95 cursor-pointer ${cellBg}`}
                 >
                   {label}
                 </button>
