@@ -1,0 +1,503 @@
+import { BrickBlueprint, LevelDefinition } from './types';
+
+function createGridRow(
+  rowIndex: number,
+  y: number,
+  items: Array<{
+    col: number;
+    type: BrickBlueprint['type'];
+    color: BrickBlueprint['color'];
+    hp: number;
+    width?: number;
+  }>,
+  totalCols: number = 6
+): BrickBlueprint[] {
+  const spacing = 1.82;
+  const startX = -((totalCols - 1) * spacing) / 2;
+  return items.map((item) => ({
+    row: rowIndex,
+    col: item.col,
+    x: startX + item.col * spacing,
+    y,
+    width: item.width ?? 1.68,
+    height: 1.08,
+    type: item.type,
+    color: item.color,
+    hp: item.hp,
+  }));
+}
+
+export const LEVEL_7_BRICKS: BrickBlueprint[] = [
+  // Row 0
+  { row: 0, col: 0, x: -4.32, y: 4.55, width: 1.62, height: 1.08, type: 'numbered', color: 'pink', hp: 50 },
+  { row: 0, col: 1, x: -2.56, y: 4.55, width: 1.62, height: 1.08, type: 'numbered', color: 'yellow', hp: 40 },
+  { row: 0, col: 2, x: -0.80, y: 4.55, width: 1.62, height: 1.08, type: 'numbered', color: 'green', hp: 30 },
+  { row: 0, col: 3, x: 1.24, y: 4.55, width: 1.48, height: 1.08, type: 'numbered', color: 'blue', hp: 30 },
+  { row: 0, col: 4, x: 2.84, y: 4.55, width: 1.48, height: 1.08, type: 'numbered', color: 'purple', hp: 50 },
+  { row: 0, col: 5, x: 4.44, y: 4.55, width: 1.52, height: 1.08, type: 'numbered', color: 'yellow', hp: 40 },
+
+  // Row 1
+  { row: 1, col: 0, x: -4.12, y: 3.32, width: 2.02, height: 1.08, type: 'numbered', color: 'blue', hp: 30 },
+  { row: 1, col: 1, x: -1.94, y: 3.32, width: 2.02, height: 1.08, type: 'numbered', color: 'purple', hp: 20 },
+  { row: 1, col: 2, x: 0.08, y: 3.32, width: 1.72, height: 1.08, type: 'lightning', color: 'lightning', hp: 10 },
+  { row: 1, col: 3, x: 2.12, y: 3.32, width: 2.04, height: 1.08, type: 'numbered', color: 'pink', hp: 50 },
+  { row: 1, col: 4, x: 4.24, y: 3.32, width: 1.92, height: 1.08, type: 'numbered', color: 'green', hp: 30 },
+
+  // Row 2
+  { row: 2, col: 0, x: -4.22, y: 2.09, width: 1.82, height: 1.08, type: 'numbered', color: 'green', hp: 20 },
+  { row: 2, col: 1, x: -2.14, y: 2.09, width: 2.04, height: 1.08, type: 'kawaii_happy', color: 'pink', hp: 30 },
+  { row: 2, col: 3, x: 2.52, y: 2.09, width: 1.88, height: 1.08, type: 'numbered', color: 'purple', hp: 40 },
+  { row: 2, col: 4, x: 4.42, y: 2.09, width: 1.66, height: 1.08, type: 'kawaii_happy', color: 'yellow', hp: 30 },
+
+  // Row 3
+  { row: 3, col: 0, x: -4.22, y: 0.86, width: 1.82, height: 1.08, type: 'numbered', color: 'purple', hp: 40 },
+  { row: 3, col: 1, x: -2.22, y: 0.86, width: 1.88, height: 1.08, type: 'numbered', color: 'blue', hp: 30 },
+  { row: 3, col: 3, x: 2.52, y: 0.86, width: 1.88, height: 1.08, type: 'numbered', color: 'orange', hp: 20 },
+  { row: 3, col: 4, x: 4.42, y: 0.86, width: 1.66, height: 1.08, type: 'numbered', color: 'blue', hp: 40 },
+
+  // Row 4
+  { row: 4, col: 0, x: -4.12, y: -0.37, width: 2.02, height: 1.08, type: 'kawaii_wink', color: 'yellow', hp: 30 },
+  { row: 4, col: 1, x: -2.06, y: -0.37, width: 1.78, height: 1.08, type: 'numbered', color: 'green', hp: 50 },
+  { row: 4, col: 3, x: 2.74, y: -0.37, width: 1.84, height: 1.08, type: 'numbered', color: 'green', hp: 50 },
+  { row: 4, col: 4, x: 4.52, y: -0.37, width: 1.44, height: 1.08, type: 'numbered', color: 'purple', hp: 30 },
+];
+
+export const CAMPAIGN_LEVELS: LevelDefinition[] = [
+  {
+    id: 1,
+    name: 'NIVEAU 1',
+    subtitle: 'Arche d’Éveil & Bumper Fixe',
+    difficulty: 'Débutant',
+    ballSpeed: 9.8,
+    fixedObstacles: [{ x: 0, y: -2.1, kind: 'bumper' }],
+    randomObstacleCount: 0,
+    obstacleShiftMinSec: 14,
+    obstacleShiftMaxSec: 20,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.3, [
+        { col: 0, type: 'numbered', color: 'blue', hp: 10 },
+        { col: 1, type: 'numbered', color: 'green', hp: 10 },
+        { col: 2, type: 'kawaii_happy', color: 'yellow', hp: 10 },
+        { col: 3, type: 'kawaii_wink', color: 'pink', hp: 10 },
+        { col: 4, type: 'numbered', color: 'green', hp: 10 },
+        { col: 5, type: 'numbered', color: 'blue', hp: 10 },
+      ]),
+      ...createGridRow(1, 3.05, [
+        { col: 1, type: 'numbered', color: 'purple', hp: 20 },
+        { col: 2, type: 'numbered', color: 'yellow', hp: 10 },
+        { col: 3, type: 'numbered', color: 'yellow', hp: 10 },
+        { col: 4, type: 'numbered', color: 'purple', hp: 20 },
+      ]),
+    ],
+  },
+  {
+    id: 2,
+    name: 'NIVEAU 2',
+    subtitle: 'Double Prisme Ancré',
+    difficulty: 'Débutant',
+    ballSpeed: 10.35,
+    fixedObstacles: [
+      { x: -2.3, y: -1.9, kind: 'prism' },
+      { x: 2.3, y: -1.9, kind: 'prism' },
+    ],
+    randomObstacleCount: 0,
+    obstacleShiftMinSec: 12,
+    obstacleShiftMaxSec: 20,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.4, [
+        { col: 0, type: 'numbered', color: 'pink', hp: 20 },
+        { col: 1, type: 'numbered', color: 'yellow', hp: 20 },
+        { col: 4, type: 'numbered', color: 'yellow', hp: 20 },
+        { col: 5, type: 'numbered', color: 'pink', hp: 20 },
+      ]),
+      ...createGridRow(1, 3.15, [
+        { col: 0, type: 'numbered', color: 'blue', hp: 10 },
+        { col: 1, type: 'kawaii_happy', color: 'pink', hp: 20 },
+        { col: 2, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 3, type: 'numbered', color: 'purple', hp: 20 },
+        { col: 4, type: 'kawaii_wink', color: 'yellow', hp: 20 },
+        { col: 5, type: 'numbered', color: 'blue', hp: 10 },
+      ]),
+      ...createGridRow(2, 1.9, [
+        { col: 1, type: 'numbered', color: 'green', hp: 10 },
+        { col: 2, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 3, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 4, type: 'numbered', color: 'green', hp: 10 },
+      ]),
+    ],
+  },
+  {
+    id: 3,
+    name: 'NIVEAU 3',
+    subtitle: 'Triangle Orbital & 1 Fantôme',
+    difficulty: 'Débutant',
+    ballSpeed: 10.75,
+    fixedObstacles: [{ x: 0, y: -1.65, kind: 'prism' }],
+    randomObstacleCount: 1,
+    obstacleShiftMinSec: 12,
+    obstacleShiftMaxSec: 19,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.45, [
+        { col: 2, type: 'kawaii_happy', color: 'yellow', hp: 20 },
+        { col: 3, type: 'kawaii_wink', color: 'pink', hp: 20 },
+      ]),
+      ...createGridRow(1, 3.2, [
+        { col: 1, type: 'numbered', color: 'purple', hp: 20 },
+        { col: 2, type: 'numbered', color: 'pink', hp: 30 },
+        { col: 3, type: 'numbered', color: 'pink', hp: 30 },
+        { col: 4, type: 'numbered', color: 'purple', hp: 20 },
+      ]),
+      ...createGridRow(2, 1.95, [
+        { col: 0, type: 'numbered', color: 'green', hp: 20 },
+        { col: 1, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 2, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 3, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 4, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 5, type: 'numbered', color: 'green', hp: 20 },
+      ]),
+    ],
+  },
+  {
+    id: 4,
+    name: 'NIVEAU 4',
+    subtitle: 'Couloir Vortex & Téléportation',
+    difficulty: 'Débutant',
+    ballSpeed: 11.05,
+    fixedObstacles: [{ x: 0, y: -2.25, kind: 'vortex' }],
+    randomObstacleCount: 1,
+    obstacleShiftMinSec: 11,
+    obstacleShiftMaxSec: 18,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.5, [
+        { col: 0, type: 'numbered', color: 'purple', hp: 30 },
+        { col: 1, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 2, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 3, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 4, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 5, type: 'numbered', color: 'purple', hp: 30 },
+      ]),
+      ...createGridRow(1, 3.25, [
+        { col: 0, type: 'numbered', color: 'green', hp: 20 },
+        { col: 1, type: 'numbered', color: 'pink', hp: 30 },
+        { col: 4, type: 'numbered', color: 'pink', hp: 30 },
+        { col: 5, type: 'numbered', color: 'green', hp: 20 },
+      ]),
+      ...createGridRow(2, 2.0, [
+        { col: 0, type: 'kawaii_happy', color: 'yellow', hp: 20 },
+        { col: 1, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 4, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 5, type: 'kawaii_wink', color: 'yellow', hp: 20 },
+      ]),
+    ],
+  },
+  {
+    id: 5,
+    name: 'NIVEAU 5',
+    subtitle: 'Forteresse Asymétrique',
+    difficulty: 'Débutant',
+    ballSpeed: 11.3,
+    fixedObstacles: [
+      { x: -2.6, y: -1.55, kind: 'bumper' },
+      { x: 2.6, y: -2.35, kind: 'prism' },
+    ],
+    randomObstacleCount: 1,
+    obstacleShiftMinSec: 10,
+    obstacleShiftMaxSec: 18,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.5, [
+        { col: 0, type: 'numbered', color: 'pink', hp: 30 },
+        { col: 1, type: 'numbered', color: 'yellow', hp: 30 },
+        { col: 2, type: 'numbered', color: 'green', hp: 20 },
+        { col: 3, type: 'numbered', color: 'green', hp: 20 },
+        { col: 4, type: 'numbered', color: 'yellow', hp: 30 },
+      ]),
+      ...createGridRow(1, 3.25, [
+        { col: 1, type: 'kawaii_happy', color: 'pink', hp: 20 },
+        { col: 2, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 3, type: 'numbered', color: 'purple', hp: 30 },
+        { col: 4, type: 'kawaii_wink', color: 'yellow', hp: 20 },
+        { col: 5, type: 'numbered', color: 'blue', hp: 30 },
+      ]),
+      ...createGridRow(2, 2.0, [
+        { col: 0, type: 'numbered', color: 'purple', hp: 20 },
+        { col: 1, type: 'numbered', color: 'orange', hp: 20 },
+        { col: 2, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 3, type: 'numbered', color: 'blue', hp: 20 },
+        { col: 4, type: 'numbered', color: 'orange', hp: 20 },
+      ]),
+    ],
+  },
+  {
+    id: 6,
+    name: 'NIVEAU 6',
+    subtitle: 'Sablier Quantique (Fixe + 2 Aléatoires)',
+    difficulty: 'Intermédiaire',
+    ballSpeed: 11.55,
+    fixedObstacles: [{ x: 0, y: -1.8, kind: 'bumper' }],
+    randomObstacleCount: 2,
+    obstacleShiftMinSec: 10,
+    obstacleShiftMaxSec: 18,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.55, [
+        { col: 0, type: 'numbered', color: 'purple', hp: 40 },
+        { col: 1, type: 'numbered', color: 'pink', hp: 40 },
+        { col: 2, type: 'numbered', color: 'yellow', hp: 30 },
+        { col: 3, type: 'numbered', color: 'yellow', hp: 30 },
+        { col: 4, type: 'numbered', color: 'pink', hp: 40 },
+        { col: 5, type: 'numbered', color: 'purple', hp: 40 },
+      ]),
+      ...createGridRow(1, 3.32, [
+        { col: 1, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 2, type: 'kawaii_happy', color: 'pink', hp: 30 },
+        { col: 3, type: 'kawaii_wink', color: 'yellow', hp: 30 },
+        { col: 4, type: 'lightning', color: 'lightning', hp: 10 },
+      ]),
+      ...createGridRow(2, 2.09, [
+        { col: 2, type: 'numbered', color: 'purple', hp: 40 },
+        { col: 3, type: 'numbered', color: 'purple', hp: 40 },
+      ]),
+      ...createGridRow(3, 0.86, [
+        { col: 0, type: 'numbered', color: 'yellow', hp: 20 },
+        { col: 1, type: 'numbered', color: 'green', hp: 30 },
+        { col: 2, type: 'numbered', color: 'orange', hp: 30 },
+        { col: 3, type: 'numbered', color: 'orange', hp: 30 },
+        { col: 4, type: 'numbered', color: 'green', hp: 30 },
+        { col: 5, type: 'numbered', color: 'yellow', hp: 20 },
+      ]),
+    ],
+  },
+  {
+    id: 7,
+    name: 'NIVEAU 7',
+    subtitle: 'Brèche Électrique & Bumpers Hybrides',
+    difficulty: 'Intermédiaire',
+    ballSpeed: 11.75,
+    fixedObstacles: [{ x: -2.4, y: -1.85, kind: 'bumper' }],
+    randomObstacleCount: 2,
+    obstacleShiftMinSec: 10,
+    obstacleShiftMaxSec: 18,
+    initialScore: 640,
+    initialMultiplier: 2,
+    initialLives: 3,
+    initialProgressBonus: 0.52,
+    autoTriggerCenterBurst: true,
+    bricks: LEVEL_7_BRICKS,
+  },
+  {
+    id: 8,
+    name: 'NIVEAU 8',
+    subtitle: 'Labyrinthe en Damier',
+    difficulty: 'Intermédiaire',
+    ballSpeed: 12.15,
+    fixedObstacles: [
+      { x: -1.9, y: -1.7, kind: 'prism' },
+      { x: 1.9, y: -1.7, kind: 'vortex' },
+    ],
+    randomObstacleCount: 2,
+    obstacleShiftMinSec: 10,
+    obstacleShiftMaxSec: 17,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.55, [
+        { col: 0, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 2, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 4, type: 'numbered', color: 'purple', hp: 40 },
+      ]),
+      ...createGridRow(1, 3.32, [
+        { col: 1, type: 'kawaii_happy', color: 'pink', hp: 30 },
+        { col: 3, type: 'numbered', color: 'blue', hp: 40 },
+        { col: 5, type: 'numbered', color: 'yellow', hp: 40 },
+      ]),
+      ...createGridRow(2, 2.09, [
+        { col: 0, type: 'numbered', color: 'green', hp: 40 },
+        { col: 2, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 4, type: 'numbered', color: 'orange', hp: 30 },
+      ]),
+      ...createGridRow(3, 0.86, [
+        { col: 1, type: 'numbered', color: 'purple', hp: 40 },
+        { col: 3, type: 'numbered', color: 'green', hp: 30 },
+        { col: 5, type: 'kawaii_wink', color: 'yellow', hp: 30 },
+      ]),
+    ],
+  },
+  {
+    id: 9,
+    name: 'NIVEAU 9',
+    subtitle: 'Remparts de Titane & 3 Fantômes',
+    difficulty: 'Avancé',
+    ballSpeed: 12.5,
+    fixedObstacles: [{ x: 0, y: -1.6, kind: 'vortex' }],
+    randomObstacleCount: 3,
+    obstacleShiftMinSec: 10,
+    obstacleShiftMaxSec: 16,
+    descendingIntervalSec: 14,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.55, [
+        { col: 0, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 1, type: 'numbered', color: 'yellow', hp: 50 },
+        { col: 2, type: 'kawaii_happy', color: 'pink', hp: 40 },
+        { col: 3, type: 'kawaii_wink', color: 'yellow', hp: 40 },
+        { col: 4, type: 'numbered', color: 'yellow', hp: 50 },
+        { col: 5, type: 'numbered', color: 'pink', hp: 50 },
+      ]),
+      ...createGridRow(1, 3.32, [
+        { col: 0, type: 'numbered', color: 'purple', hp: 40 },
+        { col: 1, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 2, type: 'numbered', color: 'blue', hp: 50 },
+        { col: 3, type: 'numbered', color: 'blue', hp: 50 },
+        { col: 4, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 5, type: 'numbered', color: 'purple', hp: 40 },
+      ]),
+      ...createGridRow(2, 2.09, [
+        { col: 0, type: 'numbered', color: 'green', hp: 40 },
+        { col: 1, type: 'metal', color: 'metal', hp: 999 },
+        { col: 2, type: 'numbered', color: 'orange', hp: 40 },
+        { col: 3, type: 'numbered', color: 'orange', hp: 40 },
+        { col: 4, type: 'metal', color: 'metal', hp: 999 },
+        { col: 5, type: 'numbered', color: 'green', hp: 40 },
+      ]),
+    ],
+  },
+  {
+    id: 10,
+    name: 'NIVEAU 10',
+    subtitle: 'Gravité Haute Vélocité',
+    difficulty: 'Avancé',
+    ballSpeed: 12.95,
+    fixedObstacles: [
+      { x: -2.7, y: -1.5, kind: 'bumper' },
+      { x: 2.7, y: -1.5, kind: 'bumper' },
+    ],
+    randomObstacleCount: 3,
+    obstacleShiftMinSec: 10,
+    obstacleShiftMaxSec: 16,
+    descendingIntervalSec: 12,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.55, [
+        { col: 0, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 1, type: 'numbered', color: 'purple', hp: 50 },
+        { col: 2, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 3, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 4, type: 'numbered', color: 'purple', hp: 50 },
+        { col: 5, type: 'numbered', color: 'pink', hp: 50 },
+      ]),
+      ...createGridRow(1, 3.32, [
+        { col: 0, type: 'kawaii_happy', color: 'yellow', hp: 40 },
+        { col: 1, type: 'numbered', color: 'blue', hp: 50 },
+        { col: 2, type: 'metal', color: 'metal', hp: 999 },
+        { col: 3, type: 'metal', color: 'metal', hp: 999 },
+        { col: 4, type: 'numbered', color: 'blue', hp: 50 },
+        { col: 5, type: 'kawaii_wink', color: 'yellow', hp: 40 },
+      ]),
+      ...createGridRow(2, 2.09, [
+        { col: 0, type: 'numbered', color: 'orange', hp: 40 },
+        { col: 1, type: 'numbered', color: 'green', hp: 50 },
+        { col: 4, type: 'numbered', color: 'green', hp: 50 },
+        { col: 5, type: 'numbered', color: 'orange', hp: 40 },
+      ]),
+    ],
+  },
+  {
+    id: 11,
+    name: 'NIVEAU 11',
+    subtitle: 'Supernova Cristalline',
+    difficulty: 'Avancé',
+    ballSpeed: 13.35,
+    fixedObstacles: [
+      { x: -2.2, y: -2.0, kind: 'prism' },
+      { x: 2.2, y: -2.0, kind: 'prism' },
+    ],
+    randomObstacleCount: 3,
+    obstacleShiftMinSec: 10,
+    obstacleShiftMaxSec: 15,
+    descendingIntervalSec: 11,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.55, [
+        { col: 0, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 1, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 2, type: 'numbered', color: 'yellow', hp: 50 },
+        { col: 3, type: 'numbered', color: 'yellow', hp: 50 },
+        { col: 4, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 5, type: 'lightning', color: 'lightning', hp: 10 },
+      ]),
+      ...createGridRow(1, 3.32, [
+        { col: 0, type: 'numbered', color: 'purple', hp: 50 },
+        { col: 1, type: 'metal', color: 'metal', hp: 999 },
+        { col: 2, type: 'kawaii_happy', color: 'pink', hp: 50 },
+        { col: 3, type: 'kawaii_wink', color: 'yellow', hp: 50 },
+        { col: 4, type: 'metal', color: 'metal', hp: 999 },
+        { col: 5, type: 'numbered', color: 'purple', hp: 50 },
+      ]),
+      ...createGridRow(2, 2.09, [
+        { col: 0, type: 'numbered', color: 'green', hp: 50 },
+        { col: 1, type: 'numbered', color: 'blue', hp: 50 },
+        { col: 2, type: 'numbered', color: 'orange', hp: 50 },
+        { col: 3, type: 'numbered', color: 'orange', hp: 50 },
+        { col: 4, type: 'numbered', color: 'blue', hp: 50 },
+        { col: 5, type: 'numbered', color: 'green', hp: 50 },
+      ]),
+    ],
+  },
+  {
+    id: 12,
+    name: 'NIVEAU 12',
+    subtitle: 'Couronne du Roi Cosmique',
+    difficulty: 'Avancé',
+    ballSpeed: 13.75,
+    fixedObstacles: [
+      { x: -2.8, y: -1.55, kind: 'bumper' },
+      { x: 0, y: -2.2, kind: 'vortex' },
+      { x: 2.8, y: -1.55, kind: 'bumper' },
+    ],
+    randomObstacleCount: 3,
+    obstacleShiftMinSec: 10,
+    obstacleShiftMaxSec: 15,
+    descendingIntervalSec: 10,
+    initialLives: 3,
+    bricks: [
+      ...createGridRow(0, 4.55, [
+        { col: 0, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 1, type: 'kawaii_happy', color: 'yellow', hp: 50 },
+        { col: 2, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 3, type: 'lightning', color: 'lightning', hp: 10 },
+        { col: 4, type: 'kawaii_wink', color: 'yellow', hp: 50 },
+        { col: 5, type: 'numbered', color: 'pink', hp: 50 },
+      ]),
+      ...createGridRow(1, 3.32, [
+        { col: 0, type: 'numbered', color: 'purple', hp: 50 },
+        { col: 1, type: 'numbered', color: 'blue', hp: 50 },
+        { col: 2, type: 'kawaii_happy', color: 'pink', hp: 50 },
+        { col: 3, type: 'kawaii_happy', color: 'pink', hp: 50 },
+        { col: 4, type: 'numbered', color: 'blue', hp: 50 },
+        { col: 5, type: 'numbered', color: 'purple', hp: 50 },
+      ]),
+      ...createGridRow(2, 2.09, [
+        { col: 0, type: 'metal', color: 'metal', hp: 999 },
+        { col: 1, type: 'numbered', color: 'green', hp: 50 },
+        { col: 2, type: 'numbered', color: 'orange', hp: 50 },
+        { col: 3, type: 'numbered', color: 'orange', hp: 50 },
+        { col: 4, type: 'numbered', color: 'green', hp: 50 },
+        { col: 5, type: 'metal', color: 'metal', hp: 999 },
+      ]),
+      ...createGridRow(3, 0.86, [
+        { col: 0, type: 'numbered', color: 'yellow', hp: 50 },
+        { col: 1, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 4, type: 'numbered', color: 'pink', hp: 50 },
+        { col: 5, type: 'numbered', color: 'yellow', hp: 50 },
+      ]),
+    ],
+  },
+];
+
+export function getLevelById(id: number): LevelDefinition {
+  return CAMPAIGN_LEVELS.find((lvl) => lvl.id === id) || CAMPAIGN_LEVELS[6];
+}

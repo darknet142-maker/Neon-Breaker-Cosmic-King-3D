@@ -1,0 +1,6 @@
+{
+  "name": "Neon Breaker: Cosmic King 3D",
+  "description": "Jeu d'arcade Casse-Briques 3D néon spatial et kawaii avec briques numérotées, éclairs explosifs, boosters tactiques (Aimant, Fusée, Multi-billes) et campagne évolutive incluant le Niveau 7 emblématique.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
